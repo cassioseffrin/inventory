@@ -1,0 +1,34 @@
+# Inventário de TI — Next.js (frontend + API) em um único container.
+# Os bancos (msf no Kali e inventario) ficam FORA do compose: o app conecta neles pela rede.
+#
+#   cp .env.example .env   # preencha as URLs/senhas
+#   docker compose up -d --build
+#   docker compose exec inventario node scripts/seed.mjs     # primeira vez: admin + funcionários de exemplo
+#
+# Conectividade com o Postgres:
+#  - Bancos em outra máquina da rede (ex.: 192.168.50.217 / 192.168.50.21): use o IP no .env; a rede bridge padrão alcança a LAN.
+#  - Postgres NA MESMA máquina do Docker: use host.docker.internal no .env
+#    (ex.: postgres://inv_msf_ro:...@host.docker.internal:5432/msf). O extra_hosts abaixo faz isso funcionar também no Linux.
+#    O Postgres precisa escutar na interface docker0 (listen_addresses) e o pg_hba.conf precisa liberar 172.16.0.0/12.
+#  - Alternativa no Linux: descomente `network_mode: host` (e remova `ports`); aí `localhost` no .env é o host.
+
+services:
+  inventario:
+    build: .
+    image: arpa-inventario:latest
+    container_name: inventario
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # network_mode: host
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    security_opt:
+      - no-new-privileges:true

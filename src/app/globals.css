@@ -1,0 +1,26 @@
+body {
+  margin: 0;
+}
+
+.mono {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 0.85em;
+}
+
+.tabela-wrap {
+  overflow-x: auto;
+}
+
+.linha-clicavel {
+  cursor: pointer;
+}
+
+/* badges não devem ser truncados quando a célula da tabela é estreita */
+.mantine-Badge-label {
+  overflow: visible;
+}
+
+/* tabelas de listagem rolam na horizontal em vez de quebrar linha */
+.tabela-wrap td {
+  white-space: nowrap;
+}
