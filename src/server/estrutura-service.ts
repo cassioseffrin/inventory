@@ -1,10 +1,13 @@
 import 'server-only';
+import { sql } from 'drizzle-orm';
+import { db } from '@/db/inv';
 import { hostsComPortas, type HostComPortas, type PortaServico } from './msf-repo';
+import { ipSemMascara, normalizarMac } from './util';
 
 /**
- * Mapa de estrutura de servidores: lê os hosts do msf (somente leitura) e os
- * classifica por função a partir das portas abertas, como no diagrama de rede.
- * A categoria é inferida a cada atualização — nada é persistido aqui.
+ * Mapa de estrutura de servidores: lê os hosts do msf (somente leitura),
+ * cruza dinamicamente com o inventário próprio (inventario.itens e interfaces)
+ * e classifica por função a partir das portas abertas.
  */
 
 export const CATEGORIAS_SERVIDOR = ['ad', 'banco', 'web'] as const;
@@ -31,9 +34,23 @@ function classificar(portas: PortaServico[]): CategoriaServidor {
   return 'web';
 }
 
+export type InfoInventario = {
+  itemId: number;
+  numeroPatrimonio: string;
+  patrimonioProvisorio: boolean;
+  tipo: string;
+  status: string;
+  setor: string | null;
+  localizacao: string | null;
+  responsavel: string | null;
+  modelo: string | null;
+  fabricante: string | null;
+};
+
 export type Servidor = {
   id: number;
   address: string;
+  mac: string | null;
   name: string | null;
   os: string | null;
   workspace: string | null;
@@ -41,6 +58,7 @@ export type Servidor = {
   updatedAt: Date | null;
   categoria: CategoriaServidor;
   portas: PortaServico[];
+  inventario: InfoInventario | null;
 };
 
 export type GrupoEstrutura = {
@@ -49,31 +67,118 @@ export type GrupoEstrutura = {
   servidores: Servidor[];
 };
 
+export type ResumoInventario = {
+  total: number;
+  inventariados: number;
+  shadowIt: number;
+};
+
 export type Estrutura = {
   grupos: GrupoEstrutura[];
   total: number;
   geradoEm: string;
+  resumoInventario: ResumoInventario;
 };
 
-function paraServidor(h: HostComPortas): Servidor {
-  const portas = Array.isArray(h.portas) ? h.portas : [];
-  return {
-    id: h.id,
-    address: h.address,
-    name: h.name,
-    os: [h.os_name, h.os_flavor].filter(Boolean).join(' ') || null,
-    workspace: h.workspace,
-    state: h.state,
-    updatedAt: h.updated_at,
-    categoria: classificar(portas),
-    portas,
-  };
-}
+type ItemInventarioDb = {
+  id: number;
+  numero_patrimonio: string;
+  patrimonio_provisorio: boolean;
+  mac: string | null;
+  ip: string | null;
+  hostname: string | null;
+  tipo: string;
+  status: string;
+  setor: string | null;
+  localizacao: string | null;
+  modelo: string | null;
+  fabricante: string | null;
+  responsavel: string | null;
+};
 
-/** Monta o mapa agrupado lendo o estado atual do msf. */
+type InterfaceDb = {
+  item_id: number;
+  mac: string | null;
+  ip: string | null;
+};
+
+/** Monta o mapa de servidores cruzando em tempo real os hosts do MSF com o Inventário de TI. */
 export async function montarEstrutura(workspaceId?: number): Promise<Estrutura> {
-  const hosts = await hostsComPortas(workspaceId);
-  const servidores = hosts.map(paraServidor);
+  const [hosts, itensRes, ifacesRes] = await Promise.all([
+    hostsComPortas(workspaceId),
+    db().execute<ItemInventarioDb>(sql`
+      SELECT i.id, i.numero_patrimonio, i.patrimonio_provisorio,
+             lower(i.mac) AS mac, host(i.ip) AS ip, i.hostname,
+             i.tipo, i.status, i.setor, i.localizacao, i.modelo, i.fabricante,
+             f.nome AS responsavel
+      FROM inventario.itens i
+      LEFT JOIN inventario.funcionarios f ON f.id = i.funcionario_id
+    `),
+    db().execute<InterfaceDb>(sql`
+      SELECT item_id, lower(mac) AS mac, host(ip) AS ip
+      FROM inventario.itens_interfaces
+    `),
+  ]);
+
+  const porMac = new Map<string, ItemInventarioDb>();
+  const porIp = new Map<string, ItemInventarioDb>();
+
+  for (const it of itensRes.rows) {
+    const mac = normalizarMac(it.mac);
+    const ip = ipSemMascara(it.ip);
+    if (mac && !porMac.has(mac)) porMac.set(mac, it);
+    if (ip && !porIp.has(ip)) porIp.set(ip, it);
+  }
+
+  const itensMap = new Map<number, ItemInventarioDb>(itensRes.rows.map((x) => [x.id, x]));
+  for (const iface of ifacesRes.rows) {
+    const it = itensMap.get(iface.item_id);
+    if (!it) continue;
+    const mac = normalizarMac(iface.mac);
+    const ip = ipSemMascara(iface.ip);
+    if (mac && !porMac.has(mac)) porMac.set(mac, it);
+    if (ip && !porIp.has(ip)) porIp.set(ip, it);
+  }
+
+  let totalInventariados = 0;
+
+  const servidores: Servidor[] = hosts.map((h) => {
+    const portas = Array.isArray(h.portas) ? h.portas : [];
+    const mac = normalizarMac(h.mac);
+    const ip = ipSemMascara(h.address);
+
+    const match = (mac ? porMac.get(mac) : null) || (ip ? porIp.get(ip) : null);
+    if (match) totalInventariados++;
+
+    const inventario: InfoInventario | null = match
+      ? {
+          itemId: match.id,
+          numeroPatrimonio: match.numero_patrimonio,
+          patrimonioProvisorio: match.patrimonio_provisorio,
+          tipo: match.tipo,
+          status: match.status,
+          setor: match.setor,
+          localizacao: match.localizacao,
+          responsavel: match.responsavel,
+          modelo: match.modelo,
+          fabricante: match.fabricante,
+        }
+      : null;
+
+    return {
+      id: h.id,
+      address: h.address,
+      mac: h.mac,
+      name: h.name,
+      os: [h.os_name, h.os_flavor].filter(Boolean).join(' ') || null,
+      workspace: h.workspace,
+      state: h.state,
+      updatedAt: h.updated_at,
+      categoria: classificar(portas),
+      portas,
+      inventario,
+    };
+  });
 
   const grupos: GrupoEstrutura[] = CATEGORIAS_SERVIDOR.map((categoria) => ({
     categoria,
@@ -81,5 +186,14 @@ export async function montarEstrutura(workspaceId?: number): Promise<Estrutura> 
     servidores: servidores.filter((s) => s.categoria === categoria),
   })).filter((g) => g.servidores.length > 0);
 
-  return { grupos, total: servidores.length, geradoEm: new Date().toISOString() };
+  return {
+    grupos,
+    total: servidores.length,
+    geradoEm: new Date().toISOString(),
+    resumoInventario: {
+      total: servidores.length,
+      inventariados: totalInventariados,
+      shadowIt: servidores.length - totalInventariados,
+    },
+  };
 }

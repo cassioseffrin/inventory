@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
     "db:seed": "node scripts/seed.mjs",
-    "user:create": "node scripts/create-user.mjs"
+    "user:create": "node scripts/create-user.mjs",
+    "pm2": "pm2 start yarn --name dash-ia -- start -p 4023 -H 0.0.0.0"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

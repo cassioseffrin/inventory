@@ -1,12 +1,26 @@
-// Gera o código Mermaid para a infraestrutura de servidores a partir dos dados do Metasploit.
-// Suporta múltiplos modos de visualização (Topologia Arquitetural, Grade de Racks em Matriz, Por Sub-rede),
-// controle de densidade e alta performance para centenas de hosts.
+// Gera o código Mermaid para a infraestrutura de servidores a partir dos dados do Metasploit,
+// enriquecido em tempo real com o Inventário de TI (Patrimônio, Setor, Responsável e detecção de Shadow IT).
 
 export type Porta = { port: number; proto: string; name: string | null };
 export type Categoria = 'ad' | 'banco' | 'web';
+
+export type InfoInventario = {
+  itemId: number;
+  numeroPatrimonio: string;
+  patrimonioProvisorio?: boolean;
+  tipo?: string;
+  status?: string;
+  setor?: string | null;
+  localizacao?: string | null;
+  responsavel?: string | null;
+  modelo?: string | null;
+  fabricante?: string | null;
+};
+
 export type Servidor = {
   id: number;
   address: string;
+  mac?: string | null;
   name: string | null;
   os: string | null;
   workspace: string | null;
@@ -14,19 +28,35 @@ export type Servidor = {
   updatedAt: string | null;
   categoria: Categoria;
   portas: Porta[];
+  inventario?: InfoInventario | null;
 };
+
 export type Grupo = { categoria: Categoria; label: string; servidores: Servidor[] };
-export type Estrutura = { grupos: Grupo[]; total: number; geradoEm: string };
+
+export type ResumoInventario = {
+  total: number;
+  inventariados: number;
+  shadowIt: number;
+};
+
+export type Estrutura = {
+  grupos: Grupo[];
+  total: number;
+  geradoEm: string;
+  resumoInventario?: ResumoInventario;
+};
 
 export type TipoVisao = 'topologia' | 'grade' | 'subrede';
 export type DensidadeNo = 'compacto' | 'detalhado';
 export type DirecaoLayout = 'TB' | 'LR';
+export type FiltroInventario = 'todos' | 'inventariados' | 'shadow_it';
 
 export type OpcoesMermaid = {
   visao?: TipoVisao;
   densidade?: DensidadeNo;
   direcao?: DirecaoLayout;
   categoriaFiltro?: Categoria | 'todas';
+  filtroInventario?: FiltroInventario;
   filtroTexto?: string;
   isDark?: boolean;
 };
@@ -91,7 +121,7 @@ function limparTexto(str: string): string {
   return str.replace(/["[\]{}|<>]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-/** Formata um card de servidor com HTML visual moderno e código enxuto. */
+/** Formata um card de servidor com HTML moderno enriquecido com dados do Inventário de TI. */
 function renderCardServidor(s: Servidor, densidade: DensidadeNo = 'compacto', isDark = true): string {
   const cat = CORES_CATEGORIA[s.categoria] ?? CORES_CATEGORIA.web;
   const isAlive = s.state === 'alive';
@@ -122,16 +152,37 @@ function renderCardServidor(s: Servidor, densidade: DensidadeNo = 'compacto', is
       ? `<span style='background:rgba(148,163,184,0.2);color:${subTextColor};font:8px monospace;padding:0 3px;border-radius:2px;'>+${portasRestantes}</span>`
       : '';
 
-  const osClean = s.os ? escapeHtml(s.os.slice(0, 20)) : '';
-  const nameClean = s.name ? escapeHtml(s.name.slice(0, 18)) : '';
-  const desc = nameClean || osClean;
-  const minW = densidade === 'compacto' ? '150px' : '190px';
-  const maxW = densidade === 'compacto' ? '190px' : '240px';
+  // Metadados do Inventário de TI
+  const inv = s.inventario;
+  let badgeInventario = '';
+  if (inv) {
+    const pat = escapeHtml(inv.numeroPatrimonio);
+    badgeInventario = `<span style='background:rgba(59,130,246,0.2);border:1px solid #3b82f6;color:${isDark ? '#93c5fd' : '#1d4ed8'};font:700 8.5px monospace;padding:0 3px;border-radius:2px;'>🏷️ ${pat}</span>`;
+  } else {
+    badgeInventario = `<span style='background:rgba(239,68,68,0.2);border:1px solid #ef4444;color:${isDark ? '#fca5a5' : '#b91c1c'};font:700 8px sans-serif;padding:0 3px;border-radius:2px;'>🚨 Shadow IT</span>`;
+  }
+
+  // Linha descritiva (OS, Setor, Responsável)
+  const osClean = s.os ? escapeHtml(s.os.slice(0, 18)) : '';
+  const nameClean = s.name ? escapeHtml(s.name.slice(0, 16)) : '';
+  const setorClean = inv?.setor ? `📍 ${escapeHtml(inv.setor.slice(0, 14))}` : '';
+  const respClean = inv?.responsavel ? `👤 ${escapeHtml(inv.responsavel.slice(0, 14))}` : '';
+
+  const partesDesc = [nameClean || osClean];
+  if (setorClean) partesDesc.push(setorClean);
+  if (densidade === 'detalhado' && respClean) partesDesc.push(respClean);
+  const desc = partesDesc.filter(Boolean).join(' · ');
+
+  const minW = densidade === 'compacto' ? '165px' : '205px';
+  const maxW = densidade === 'compacto' ? '210px' : '260px';
 
   return `<div style='text-align:left;min-width:${minW};max-width:${maxW};padding:1px 2px;font:11px system-ui;'>` +
-    `<div style='display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(148,163,184,0.2);padding-bottom:2px;margin-bottom:2px;'>` +
+    `<div style='display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(148,163,184,0.2);padding-bottom:2px;margin-bottom:2px;gap:4px;'>` +
     `<span style='font:700 11px monospace;color:${textColor};'>🖥️ ${escapeHtml(s.address)}</span>` +
-    `<span style='background:${statusColor};color:#fff;font:700 7px sans-serif;padding:0 4px;border-radius:6px;'>${statusLabel}</span>` +
+    `<div style='display:flex;align-items:center;gap:3px;'>` +
+    badgeInventario +
+    `<span style='background:${statusColor};color:#fff;font:700 7px sans-serif;padding:0 3px;border-radius:5px;'>${statusLabel}</span>` +
+    `</div>` +
     `</div>` +
     (desc ? `<div style='font-size:9px;color:${subTextColor};margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'>${desc}</div>` : '') +
     `<div style='display:flex;flex-wrap:wrap;gap:2px;'>${pills}${restantePill}</div>` +
@@ -182,57 +233,83 @@ function gerarClassDefs(isDark = true): string[] {
   ];
 }
 
+/** Filtra servidores com base nos filtros de categoria, inventário e busca textual. */
+function filtrarServidores(servidores: Servidor[], opcoes: OpcoesMermaid): Servidor[] {
+  const { filtroInventario = 'todos', filtroTexto = '' } = opcoes;
+  const term = filtroTexto.trim().toLowerCase();
+
+  return servidores.filter((s) => {
+    // Filtro por status do inventário (Todos / Inventariados / Shadow IT)
+    if (filtroInventario === 'inventariados' && !s.inventario) return false;
+    if (filtroInventario === 'shadow_it' && s.inventario) return false;
+
+    // Filtro textual
+    if (!term) return true;
+    return (
+      s.address.toLowerCase().includes(term) ||
+      (s.name && s.name.toLowerCase().includes(term)) ||
+      (s.os && s.os.toLowerCase().includes(term)) ||
+      (s.inventario?.numeroPatrimonio && s.inventario.numeroPatrimonio.toLowerCase().includes(term)) ||
+      (s.inventario?.setor && s.inventario.setor.toLowerCase().includes(term)) ||
+      (s.inventario?.responsavel && s.inventario.responsavel.toLowerCase().includes(term)) ||
+      (s.inventario?.tipo && s.inventario.tipo.toLowerCase().includes(term)) ||
+      s.portas.some((p) => String(p.port).includes(term) || (p.name && p.name.toLowerCase().includes(term)))
+    );
+  });
+}
+
 /**
  * 1. VISÃO TOPOLOGIA (Padrão Executivo):
- * Mostra o diagrama arquitetural completo com Gateway, Zonas de Segurança/Função,
- * fluxos de tráfego (Ingress, Autenticação, Banco) e servidores de destaque.
+ * Mostra o diagrama arquitetural completo com Gateway, Zonas de Função,
+ * fluxos de rede, patrimônios do inventário e nós de resumo.
  */
 function gerarVisaoTopologia(estrutura: Estrutura, opcoes: OpcoesMermaid): string {
   const { isDark = true, direcao = 'TB', densidade = 'compacto' } = opcoes;
   const linhas: string[] = [gerarDiretivaTema(isDark), `flowchart ${direcao}`];
-
   linhas.push(...gerarClassDefs(isDark));
 
-  // Acha o Gateway / Roteador (ex: .1 ou menor IP)
   const todosServidores = estrutura.grupos.flatMap((g) => g.servidores);
   const provavelGateway =
     todosServidores.find((s) => s.address.endsWith('.1')) ?? todosServidores[0];
   const ipGateway = provavelGateway ? provavelGateway.address : '192.168.50.1';
 
-  // Sub-redes detectadas
   const subredes = Array.from(new Set(todosServidores.map((s) => obterSubrede(s.address))));
   const subredePrincipal = subredes[0] ?? '192.168.50.0/24';
+
+  const resumo = estrutura.resumoInventario ?? {
+    total: estrutura.total,
+    inventariados: todosServidores.filter((s) => Boolean(s.inventario)).length,
+    shadowIt: todosServidores.filter((s) => !s.inventario).length,
+  };
 
   // Nó Gateway / Perímetro
   linhas.push(
     `  GW["<div style='padding:6px 12px;min-width:220px;text-align:center;'>` +
       `<div style='font-size:13px;font-weight:700;'>🌐 Borda de Rede &amp; Gateway</div>` +
       `<div style='font-size:11px;font-family:monospace;color:#a855f7;margin-top:2px;'>${ipGateway} · Segmento ${subredePrincipal}</div>` +
-      `<div style='font-size:9.5px;color:#94a3b8;margin-top:3px;'>${estrutura.total} hosts mapeados no MSF</div>` +
+      `<div style='font-size:9.5px;color:#94a3b8;margin-top:3px;'>${resumo.inventariados} Inventariados · ${resumo.shadowIt} Shadow IT</div>` +
       `</div>"]:::gateway`
   );
 
   linhas.push(`  subgraph INFRA ["🏰 Zonas de Serviço &amp; Infraestrutura Corporativa"]`);
   linhas.push(`    direction LR`);
 
-  // Descrição das principais portas por zona
   const descricaoPortas: Record<Categoria, string> = {
     ad: 'Kerberos 88 · LDAP 389/636 · SMB 445 · DNS 53',
     banco: 'PostgreSQL 5432 · MSSQL 1433 · MySQL 3306',
     web: 'HTTP 80/443 · SSH 22 · Aplicações Web',
   };
 
-  // Agrupa os servidores por categoria
   for (const grupo of estrutura.grupos) {
     const cat = CORES_CATEGORIA[grupo.categoria];
-    const totalGrupo = grupo.servidores.length;
+    const servidoresFiltrados = filtrarServidores(grupo.servidores, opcoes);
+    const totalGrupo = servidoresFiltrados.length;
     const sgId = `SG_${grupo.categoria.toUpperCase()}`;
     const hubId = `hub_${grupo.categoria}`;
 
     linhas.push(`    subgraph ${sgId} ["${cat.icone} ${cat.nome} (${totalGrupo})"]`);
     linhas.push(`      direction TB`);
 
-    // Hub / Cabeçalho da zona como nó concreto
     linhas.push(
       `      ${hubId}["<div style='padding:4px 8px;text-align:center;min-width:180px;'>` +
         `<div style='font-weight:700;font-size:12px;'>${cat.icone} ${cat.nome}</div>` +
@@ -240,8 +317,7 @@ function gerarVisaoTopologia(estrutura: Estrutura, opcoes: OpcoesMermaid): strin
         `</div>"]:::${grupo.categoria}`
     );
 
-    // Amostragem inteligente: destaca até 3 servidores mais relevantes do grupo
-    const destaques = grupo.servidores.slice(0, 3);
+    const destaques = servidoresFiltrados.slice(0, 3);
     for (const s of destaques) {
       linhas.push(`      srv_${s.id}["${renderCardServidor(s, densidade, isDark)}"]:::${s.categoria}`);
     }
@@ -258,32 +334,21 @@ function gerarVisaoTopologia(estrutura: Estrutura, opcoes: OpcoesMermaid): strin
 
   linhas.push(`  end`);
 
-  // Conexões e fluxos arquiteturais de rede entre nós reais com rótulos entre aspas
   const temWeb = estrutura.grupos.some((g) => g.categoria === 'web');
   const temAd = estrutura.grupos.some((g) => g.categoria === 'ad');
   const temBanco = estrutura.grupos.some((g) => g.categoria === 'banco');
 
-  if (temWeb) {
-    linhas.push(`  GW ==>|"Tráfego Ingress e Web"| hub_web`);
-  }
-  if (temAd) {
-    linhas.push(`  GW ==>|"Administração e Políticas"| hub_ad`);
-  }
-  if (temWeb && temAd) {
-    linhas.push(`  hub_web -.->|"Autenticação LDAP e Kerberos"| hub_ad`);
-  }
-  if (temWeb && temBanco) {
-    linhas.push(`  hub_web ==>|"Consultas e Pools SQL"| hub_banco`);
-  }
+  if (temWeb) linhas.push(`  GW ==>|"Tráfego Ingress e Web"| hub_web`);
+  if (temAd) linhas.push(`  GW ==>|"Administração e Políticas"| hub_ad`);
+  if (temWeb && temAd) linhas.push(`  hub_web -.->|"Autenticação LDAP e Kerberos"| hub_ad`);
+  if (temWeb && temBanco) linhas.push(`  hub_web ==>|"Consultas e Pools SQL"| hub_banco`);
 
   return linhas.join('\n');
 }
 
 /**
  * 2. VISÃO GRADE DE RACKS EM MATRIZ:
- * Organiza centenas de servidores em uma matriz balanceada de Racks (ex: 4 racks por linha,
- * cada rack com 5 servidores), evitando tanto colunas verticais infinitas quanto linhas
- * horizontais gigantescas.
+ * Organiza os servidores com identificação de Patrimônio em matriz balanceada (4 racks por linha).
  */
 function gerarVisaoGrade(estrutura: Estrutura, opcoes: OpcoesMermaid): string {
   const {
@@ -291,28 +356,16 @@ function gerarVisaoGrade(estrutura: Estrutura, opcoes: OpcoesMermaid): string {
     direcao = 'TB',
     densidade = 'compacto',
     categoriaFiltro = 'todas',
-    filtroTexto = '',
   } = opcoes;
 
   const linhas: string[] = [gerarDiretivaTema(isDark), `flowchart ${direcao}`];
   linhas.push(...gerarClassDefs(isDark));
 
-  // Aplica filtro de texto se houver
-  const term = filtroTexto.trim().toLowerCase();
-
   const gruposFiltrados = estrutura.grupos
     .filter((g) => categoriaFiltro === 'todas' || g.categoria === categoriaFiltro)
     .map((g) => ({
       ...g,
-      servidores: g.servidores.filter((s) => {
-        if (!term) return true;
-        return (
-          s.address.toLowerCase().includes(term) ||
-          (s.name && s.name.toLowerCase().includes(term)) ||
-          (s.os && s.os.toLowerCase().includes(term)) ||
-          s.portas.some((p) => String(p.port).includes(term) || (p.name && p.name.toLowerCase().includes(term)))
-        );
-      }),
+      servidores: filtrarServidores(g.servidores, opcoes),
     }))
     .filter((g) => g.servidores.length > 0);
 
@@ -369,14 +422,14 @@ function gerarVisaoGrade(estrutura: Estrutura, opcoes: OpcoesMermaid): string {
 
 /**
  * 3. VISÃO POR SUB-REDE EM MATRIZ:
- * Agrupa os servidores por prefixo IP /24 em blocos matrizados.
+ * Agrupa os servidores por prefixo IP /24 com dados do Inventário de TI.
  */
 function gerarVisaoSubrede(estrutura: Estrutura, opcoes: OpcoesMermaid): string {
   const { isDark = true, direcao = 'TB', densidade = 'compacto' } = opcoes;
   const linhas: string[] = [gerarDiretivaTema(isDark), `flowchart ${direcao}`];
   linhas.push(...gerarClassDefs(isDark));
 
-  const todosServidores = estrutura.grupos.flatMap((g) => g.servidores);
+  const todosServidores = filtrarServidores(estrutura.grupos.flatMap((g) => g.servidores), opcoes);
   const mapaSubredes = new Map<string, Servidor[]>();
 
   for (const s of todosServidores) {

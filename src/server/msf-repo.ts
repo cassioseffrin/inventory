@@ -113,6 +113,7 @@ export type PortaServico = { port: number; proto: string; name: string | null };
 export type HostComPortas = {
   id: number;
   address: string;
+  mac: string | null;
   name: string | null;
   os_name: string | null;
   os_flavor: string | null;
@@ -134,7 +135,7 @@ export async function hostsComPortas(workspaceId?: number): Promise<HostComPorta
     filtro = `AND h.workspace_id = $${params.length}`;
   }
   return msfQuery<HostComPortas>(
-    `SELECT h.id, host(h.address) AS address, h.name, h.os_name, h.os_flavor,
+    `SELECT h.id, host(h.address) AS address, lower(h.mac) AS mac, h.name, h.os_name, h.os_flavor,
             w.name AS workspace, h.state, h.updated_at AT TIME ZONE 'UTC' AS updated_at,
             COALESCE(
               (SELECT json_agg(json_build_object('port', s.port, 'proto', s.proto, 'name', s.name) ORDER BY s.port, s.proto)
