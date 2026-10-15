@@ -5,6 +5,7 @@ import {
   camposCustomizados,
   funcionarios,
   itens,
+  itensCamposValores,
   itensDiscos,
   itensHardware,
   itensInterfaces,
@@ -91,9 +92,13 @@ export async function excluirFuncionario(id: number) {
 
 // ---------------------------------------------------------------- campos customizados
 
+/** `emUso`: quantos itens têm valor preenchido no campo (perdidos se o campo for excluído). */
 export const listarCampos = (somenteAtivos = false) =>
   db()
-    .select()
+    .select({
+      ...getTableColumns(camposCustomizados),
+      emUso: sql<number>`(SELECT count(*)::int FROM ${itensCamposValores} v WHERE v.campo_id = ${camposCustomizados.id} AND coalesce(v.valor, '') <> '')`,
+    })
     .from(camposCustomizados)
     .where(somenteAtivos ? eq(camposCustomizados.ativo, true) : undefined)
     .orderBy(asc(camposCustomizados.ordem), asc(camposCustomizados.nome));

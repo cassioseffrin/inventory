@@ -89,6 +89,8 @@ export type CampoCustom = {
   obrigatorio: boolean;
   ativo: boolean;
   ordem: number;
+  /** só vem na listagem de /api/campos */
+  emUso?: number;
 };
 
 export type Historico = {

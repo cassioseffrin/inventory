@@ -7,6 +7,7 @@ import {
   IconBox,
   IconCopy,
   IconDashboard,
+  IconForms,
   IconLogout,
   IconMoon,
   IconRadar,
@@ -32,6 +33,7 @@ const LINKS = [
   { href: '/grupos', label: 'Grupos', icon: IconCategory },
   { href: '/software', label: 'Software', icon: IconApps },
   { href: '/duplicados', label: 'Duplicados', icon: IconCopy },
+  { href: '/campos', label: 'Campos customizados', icon: IconForms },
   { href: '/configuracoes', label: 'Configurações', icon: IconSettings },
 ];
 

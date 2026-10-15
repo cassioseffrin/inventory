@@ -3,6 +3,7 @@
 import {
   ActionIcon,
   Alert,
+  Anchor,
   Badge,
   Card,
   Center,
@@ -22,7 +23,10 @@ import {
 } from '@mantine/core';
 import {
   IconAlertTriangle,
+  IconDevices,
+  IconExternalLink,
   IconFilter,
+  IconFolders,
   IconLayoutGrid,
   IconRefresh,
   IconSearch,
@@ -38,6 +42,7 @@ import { fmtDataHora, fmtRelativo } from '@/lib/format';
 import {
   gerarMermaidEstrutura,
   type Categoria,
+  type CriterioAgrupamento,
   type DensidadeNo,
   type DirecaoLayout,
   type Estrutura,
@@ -48,7 +53,16 @@ import {
 
 type Workspace = { id: number; name: string; hosts: number };
 
-const COR: Record<Categoria, string> = { ad: 'yellow', banco: 'cyan', web: 'blue' };
+const COR: Record<string, string> = {
+  ad: 'yellow',
+  banco: 'cyan',
+  web: 'blue',
+  servidor: 'blue',
+  desktop: 'indigo',
+  impressora: 'cyan',
+  switch: 'violet',
+  outro: 'gray',
+};
 
 export default function EstruturaPage() {
   const { colorScheme } = useMantineColorScheme();
@@ -57,11 +71,15 @@ export default function EstruturaPage() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [aba, setAba] = useState<string | null>('diagrama');
 
+  // Fonte de dados e escopo do inventário
+  const [escopo, setEscopo] = useState<'todos_inventario' | 'apenas_msf'>('todos_inventario');
+
   // Opções de visualização do diagrama arquitetural Mermaid
-  const [visao, setVisao] = useState<TipoVisao>('topologia');
+  const [visao, setVisao] = useState<TipoVisao>('grade');
   const [densidade, setDensidade] = useState<DensidadeNo>('compacto');
   const [direcao, setDirecao] = useState<DirecaoLayout>('TB');
-  const [categoriaFiltro, setCategoriaFiltro] = useState<Categoria | 'todas'>('todas');
+  const [criterioAgrupamento, setCriterioAgrupamento] = useState<CriterioAgrupamento>('tipo_inventario');
+  const [categoriaFiltro, setCategoriaFiltro] = useState<string>('todas');
   const [filtroInventario, setFiltroInventario] = useState<FiltroInventario>('todos');
   const [filtroTexto, setFiltroTexto] = useState<string>('');
 
@@ -71,11 +89,44 @@ export default function EstruturaPage() {
   });
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['estrutura', workspaceId],
-    queryFn: () => api<Estrutura>(`/api/msf/estrutura${qs({ workspaceId })}`),
+    queryKey: ['estrutura', workspaceId, escopo],
+    queryFn: () => api<Estrutura>(`/api/msf/estrutura${qs({ workspaceId, escopo })}`),
   });
 
-  // Gera o código Mermaid enriquecido com os patrimônios do inventário
+  // Opções do filtro de categorias conforme o critério de agrupamento selecionado
+  const opcoesFiltroCategoria = useMemo(() => {
+    if (!data) return [{ value: 'todas', label: 'Todas as Categorias' }];
+
+    if (criterioAgrupamento === 'tipo_inventario' && data.gruposTipo) {
+      return [
+        { value: 'todas', label: `Todos os Tipos (${data.total})` },
+        ...data.gruposTipo.map((g) => ({
+          value: g.chave,
+          label: `${g.icone} ${g.label} (${g.servidores.length})`,
+        })),
+      ];
+    }
+
+    if (criterioAgrupamento === 'setor' && data.gruposSetor) {
+      return [
+        { value: 'todas', label: `Todos os Setores (${data.total})` },
+        ...data.gruposSetor.map((g) => ({
+          value: g.chave,
+          label: `📍 ${g.label} (${g.servidores.length})`,
+        })),
+      ];
+    }
+
+    return [
+      { value: 'todas', label: `Todas as Zonas (${data.total})` },
+      ...data.grupos.map((g) => ({
+        value: g.categoria,
+        label: `${g.label} (${g.servidores.length})`,
+      })),
+    ];
+  }, [data, criterioAgrupamento]);
+
+  // Gera o código Mermaid enriquecido e interativo com links para o inventário
   const mermaid = useMemo(() => {
     if (!data) return '';
     return gerarMermaidEstrutura(data, {
@@ -83,27 +134,28 @@ export default function EstruturaPage() {
       densidade,
       direcao,
       categoriaFiltro,
+      criterioAgrupamento,
       filtroInventario,
       filtroTexto,
       isDark,
     });
-  }, [data, visao, densidade, direcao, categoriaFiltro, filtroInventario, filtroTexto, isDark]);
+  }, [data, visao, densidade, direcao, categoriaFiltro, criterioAgrupamento, filtroInventario, filtroTexto, isDark]);
 
   return (
     <Stack gap="md">
       <Group justify="space-between" align="flex-end" wrap="wrap">
         <div>
-          <Title order={3}>Estrutura de servidores</Title>
+          <Title order={3}>Estrutura & Topologia do Inventário</Title>
           <Text size="sm" c="dimmed">
-            Mapa dos servidores classificados por portas e enriquecidos em tempo real com o Inventário de TI.
-            {data && ` Gerado em ${fmtDataHora(data.geradoEm)} · ${data.total} servidores.`}
+            Infraestrutura de equipamentos com cruzamento em tempo real do Inventário de TI e varreduras de rede.
+            {data && ` Total: ${data.total} equipamentos conectados.`}
           </Text>
 
           {/* Resumo do cruzamento com o inventário */}
           {data?.resumoInventario && (
-            <Group gap="xs" mt={6}>
+            <Group gap="xs" mt={6} wrap="wrap">
               <Badge variant="light" color="blue" size="sm" leftSection={<IconShieldCheck size={13} />}>
-                {data.resumoInventario.inventariados} Inventariados com Patrimônio
+                {data.resumoInventario.inventariados} Equipamentos Catalogados no Inventário
               </Badge>
               {data.resumoInventario.shadowIt > 0 ? (
                 <Badge variant="filled" color="red" size="sm">
@@ -111,23 +163,28 @@ export default function EstruturaPage() {
                 </Badge>
               ) : (
                 <Badge variant="light" color="teal" size="sm">
-                  ✅ 100% dos Servidores Catalogados
+                  ✅ 100% dos Dispositivos Inventariados
                 </Badge>
               )}
+              {data.resumoInventario.totalApenasInventario ? (
+                <Badge variant="outline" color="gray" size="sm">
+                  📦 +{data.resumoInventario.totalApenasInventario} itens cadastrados (estações, impressoras)
+                </Badge>
+              ) : null}
             </Group>
           )}
         </div>
 
         <Group gap="xs">
           <Select
-            w={240}
+            w={230}
             placeholder="Todos os workspaces"
             clearable
             data={workspaces.map((w) => ({ value: String(w.id), label: `${w.name} (${w.hosts} hosts)` }))}
             value={workspaceId}
             onChange={setWorkspaceId}
           />
-          <Tooltip label="Reler a estrutura atual do msf">
+          <Tooltip label="Atualizar dados">
             <ActionIcon variant="default" size="lg" onClick={() => refetch()} loading={isFetching} aria-label="Atualizar">
               <IconRefresh size={18} />
             </ActionIcon>
@@ -136,7 +193,7 @@ export default function EstruturaPage() {
       </Group>
 
       {error && (
-        <Alert color="red" icon={<IconAlertTriangle size={18} />} title="Não foi possível ler o msf">
+        <Alert color="red" icon={<IconAlertTriangle size={18} />} title="Não foi possível carregar os dados">
           {mensagemErro(error)}
         </Alert>
       )}
@@ -149,15 +206,15 @@ export default function EstruturaPage() {
 
       {data && !data.grupos.length && !isLoading && (
         <Alert color="gray" icon={<IconServer2 size={18} />}>
-          Nenhum servidor com portas abertas encontrado. Rode <span className="mono">db_nmap</span> no Kali ou troque o workspace.
+          Nenhum equipamento encontrado para o filtro selecionado.
         </Alert>
       )}
 
-      {data && data.grupos.length > 0 && (
+      {data && data.total > 0 && (
         <Tabs value={aba} onChange={setAba} keepMounted={false}>
           <Tabs.List>
             <Tabs.Tab value="diagrama" leftSection={<IconSitemap size={16} />}>
-              Diagrama Arquitetural
+              Diagrama do Inventário
             </Tabs.Tab>
             <Tabs.Tab value="cartoes" leftSection={<IconLayoutGrid size={16} />}>
               Cartões Detalhados
@@ -179,54 +236,79 @@ export default function EstruturaPage() {
                       value={visao}
                       onChange={(val) => setVisao(val as TipoVisao)}
                       data={[
-                        { label: '🌐 Topologia Geral', value: 'topologia' },
                         { label: '🖥️ Grade de Racks', value: 'grade' },
                         { label: '🖧 Por Sub-rede', value: 'subrede' },
+                        { label: '🌐 Topologia Geral', value: 'topologia' },
                       ]}
                     />
                   </Group>
 
-                  {/* Filtro do Inventário (Todos / Inventariados / Shadow IT) */}
+                  {/* Escopo da Fonte de Dados: Todos os Equipamentos vs Apenas Servidores MSF */}
                   <Group gap="xs">
+                    <Text size="xs" fw={600} c="dimmed">
+                      Base:
+                    </Text>
+                    <SegmentedControl
+                      size="xs"
+                      value={escopo}
+                      onChange={(val) => setEscopo(val as 'todos_inventario' | 'apenas_msf')}
+                      data={[
+                        { label: '📦 Inventário Completo', value: 'todos_inventario' },
+                        { label: '📡 Servidores MSF', value: 'apenas_msf' },
+                      ]}
+                    />
+                  </Group>
+
+                  {/* Agrupamento dos Racks na Grade */}
+                  {visao === 'grade' && (
+                    <Group gap="xs">
+                      <Text size="xs" fw={600} c="dimmed">
+                        Agrupar Racks:
+                      </Text>
+                      <SegmentedControl
+                        size="xs"
+                        value={criterioAgrupamento}
+                        onChange={(val) => {
+                          setCriterioAgrupamento(val as CriterioAgrupamento);
+                          setCategoriaFiltro('todas');
+                        }}
+                        data={[
+                          { label: '🏷️ Tipo de Equipamento', value: 'tipo_inventario' },
+                          { label: '🏢 Função de Portas', value: 'funcao' },
+                          { label: '📍 Por Setor', value: 'setor' },
+                        ]}
+                      />
+                    </Group>
+                  )}
+
+                  {/* Filtros e Busca */}
+                  <Group gap="xs">
+                    {/* Filtro específico do grupo selecionado */}
+                    {visao === 'grade' && (
+                      <Select
+                        size="xs"
+                        w={180}
+                        leftSection={<IconFilter size={14} />}
+                        value={categoriaFiltro}
+                        onChange={(v) => setCategoriaFiltro(v ?? 'todas')}
+                        data={opcoesFiltroCategoria}
+                      />
+                    )}
+
+                    {/* Filtro por Situação de Inventário (Todos / Inventariados / Shadow IT) */}
                     <Select
                       size="xs"
-                      w={185}
+                      w={175}
                       value={filtroInventario}
                       onChange={(v) => setFiltroInventario((v as FiltroInventario) ?? 'todos')}
                       data={[
-                        { value: 'todos', label: 'Todos os Hosts' },
+                        { value: 'todos', label: 'Todos os Status' },
                         { value: 'inventariados', label: `🛡️ Inventariados (${data.resumoInventario?.inventariados ?? 0})` },
                         { value: 'shadow_it', label: `🚨 Shadow IT (${data.resumoInventario?.shadowIt ?? 0})` },
                       ]}
                     />
 
-                    {/* Filtro de Categoria na Grade */}
-                    {visao === 'grade' && (
-                      <Select
-                        size="xs"
-                        w={175}
-                        leftSection={<IconFilter size={14} />}
-                        value={categoriaFiltro}
-                        onChange={(v) => setCategoriaFiltro((v as Categoria | 'todas') ?? 'todas')}
-                        data={[
-                          { value: 'todas', label: `Todas as Zonas (${data.total})` },
-                          {
-                            value: 'ad',
-                            label: `🏢 AD (${data.grupos.find((g) => g.categoria === 'ad')?.servidores.length ?? 0})`,
-                          },
-                          {
-                            value: 'banco',
-                            label: `🗄️ Bancos (${data.grupos.find((g) => g.categoria === 'banco')?.servidores.length ?? 0})`,
-                          },
-                          {
-                            value: 'web',
-                            label: `🚀 Web (${data.grupos.find((g) => g.categoria === 'web')?.servidores.length ?? 0})`,
-                          },
-                        ]}
-                      />
-                    )}
-
-                    {/* Campo de Busca Rápida (IP, Porta, Patrimônio, Setor) */}
+                    {/* Campo de Busca Rápida (IP, Porta, Patrimônio, Setor, Responsável) */}
                     <TextInput
                       size="xs"
                       w={190}
@@ -261,8 +343,13 @@ export default function EstruturaPage() {
                 </Group>
               </Paper>
 
+              {/* Dica de usabilidade interativa */}
+              <Text size="xs" c="dimmed" ta="right">
+                💡 Dica: Clique em qualquer card do diagrama para abrir diretamente a ficha do equipamento no Inventário de TI.
+              </Text>
+
               {/* Visualizador Mermaid interativo */}
-              <MermaidViewer code={mermaid} titulo="Topologia de Infraestrutura de Servidores & Inventário" />
+              <MermaidViewer code={mermaid} titulo="Topologia de Infraestrutura & Inventário de TI" />
             </Stack>
           </Tabs.Panel>
 
@@ -275,12 +362,12 @@ export default function EstruturaPage() {
                       {g.label}
                     </Badge>
                     <Text size="sm" c="dimmed">
-                      {g.servidores.length} servidor(es)
+                      {g.servidores.length} equipamento(s)
                     </Text>
                   </Group>
                   <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
                     {g.servidores.map((s) => (
-                      <ServidorCard key={s.id} servidor={s} cor={COR[g.categoria]} />
+                      <ServidorCard key={s.id} servidor={s} cor={COR[s.inventario?.tipo ?? g.categoria] ?? 'blue'} />
                     ))}
                   </SimpleGrid>
                 </Card>
@@ -304,9 +391,11 @@ function ServidorCard({ servidor: s, cor }: { servidor: Servidor; cor: string })
         </Text>
         <Group gap={4}>
           {inv ? (
-            <Badge size="xs" variant="light" color="blue">
-              🏷️ {inv.numeroPatrimonio}
-            </Badge>
+            <Anchor href={`/inventario/${inv.itemId}`} target="_blank" underline="never">
+              <Badge size="xs" variant="light" color="blue" rightSection={<IconExternalLink size={10} />} style={{ cursor: 'pointer' }}>
+                🏷️ {inv.numeroPatrimonio}
+              </Badge>
+            </Anchor>
           ) : (
             <Badge size="xs" variant="filled" color="red">
               🚨 Shadow IT
@@ -319,7 +408,7 @@ function ServidorCard({ servidor: s, cor }: { servidor: Servidor; cor: string })
       </Group>
 
       <Text size="sm" lineClamp={1}>
-        {s.name ?? '—'}
+        {s.name ?? (inv ? `Equipamento #${inv.numeroPatrimonio}` : '—')}
       </Text>
 
       {s.os && (
@@ -340,15 +429,27 @@ function ServidorCard({ servidor: s, cor }: { servidor: Servidor; cor: string })
         </Text>
       )}
 
+      {inv?.tipo && (
+        <Text size="xs" c="dimmed">
+          📦 Tipo: {inv.tipo}
+        </Text>
+      )}
+
       <Stack gap={2} mt="xs">
-        {s.portas.map((p) => (
-          <Text key={`${p.port}/${p.proto}`} size="xs" className="mono">
-            <Text span c={cor} fw={600}>
-              {p.port}
+        {s.portas.length > 0 ? (
+          s.portas.map((p) => (
+            <Text key={`${p.port}/${p.proto}`} size="xs" className="mono">
+              <Text span c={cor} fw={600}>
+                {p.port}
+              </Text>
+              {p.name ? ` ${p.name}` : ''}
             </Text>
-            {p.name ? ` ${p.name}` : ''}
+          ))
+        ) : (
+          <Text size="xs" c="dimmed">
+            Sem portas mapeadas no scan
           </Text>
-        ))}
+        )}
       </Stack>
 
       {s.updatedAt && (

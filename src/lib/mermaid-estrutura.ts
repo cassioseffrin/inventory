@@ -1,5 +1,7 @@
-// Gera o código Mermaid para a infraestrutura de servidores a partir dos dados do Metasploit,
-// enriquecido em tempo real com o Inventário de TI (Patrimônio, Setor, Responsável e detecção de Shadow IT).
+// Gera o código Mermaid para a infraestrutura de servidores e inventário completo,
+// com links interativos diretos para o Inventário de TI (/inventario/[id]),
+// agrupamento dinâmico por Função (MSF), Tipo de Equipamento (Inventário) ou Setor,
+// e detecção visual de Shadow IT.
 
 export type Porta = { port: number; proto: string; name: string | null };
 export type Categoria = 'ad' | 'banco' | 'web';
@@ -28,19 +30,31 @@ export type Servidor = {
   updatedAt: string | null;
   categoria: Categoria;
   portas: Porta[];
+  origem?: 'msf' | 'inventario';
   inventario?: InfoInventario | null;
 };
 
 export type Grupo = { categoria: Categoria; label: string; servidores: Servidor[] };
 
+export type GrupoPersonalizado = {
+  chave: string;
+  label: string;
+  icone: string;
+  cor: string;
+  servidores: Servidor[];
+};
+
 export type ResumoInventario = {
   total: number;
   inventariados: number;
   shadowIt: number;
+  totalApenasInventario?: number;
 };
 
 export type Estrutura = {
   grupos: Grupo[];
+  gruposTipo?: GrupoPersonalizado[];
+  gruposSetor?: GrupoPersonalizado[];
   total: number;
   geradoEm: string;
   resumoInventario?: ResumoInventario;
@@ -50,19 +64,21 @@ export type TipoVisao = 'topologia' | 'grade' | 'subrede';
 export type DensidadeNo = 'compacto' | 'detalhado';
 export type DirecaoLayout = 'TB' | 'LR';
 export type FiltroInventario = 'todos' | 'inventariados' | 'shadow_it';
+export type CriterioAgrupamento = 'funcao' | 'tipo_inventario' | 'setor';
 
 export type OpcoesMermaid = {
   visao?: TipoVisao;
   densidade?: DensidadeNo;
   direcao?: DirecaoLayout;
-  categoriaFiltro?: Categoria | 'todas';
+  categoriaFiltro?: string;
+  criterioAgrupamento?: CriterioAgrupamento;
   filtroInventario?: FiltroInventario;
   filtroTexto?: string;
   isDark?: boolean;
 };
 
 const CORES_CATEGORIA: Record<
-  Categoria,
+  string,
   {
     nome: string;
     icone: string;
@@ -104,6 +120,56 @@ const CORES_CATEGORIA: Record<
     pillTextDark: '#38bdf8',
     pillTextLight: '#0369a1',
   },
+  servidor: {
+    nome: 'Servidores',
+    icone: '🖥️',
+    accent: '#0ea5e9',
+    border: '#0284c7',
+    pillBgDark: 'rgba(14, 165, 233, 0.25)',
+    pillBgLight: '#e0f2fe',
+    pillTextDark: '#38bdf8',
+    pillTextLight: '#0369a1',
+  },
+  desktop: {
+    nome: 'Desktops / Estações',
+    icone: '💻',
+    accent: '#6366f1',
+    border: '#4f46e5',
+    pillBgDark: 'rgba(99, 102, 241, 0.25)',
+    pillBgLight: '#eef2ff',
+    pillTextDark: '#818cf8',
+    pillTextLight: '#4338ca',
+  },
+  impressora: {
+    nome: 'Impressoras',
+    icone: '🖨️',
+    accent: '#06b6d4',
+    border: '#0891b2',
+    pillBgDark: 'rgba(6, 182, 212, 0.25)',
+    pillBgLight: '#ecfeff',
+    pillTextDark: '#22d3ee',
+    pillTextLight: '#0e7490',
+  },
+  switch: {
+    nome: 'Switches e Roteadores',
+    icone: '🔀',
+    accent: '#a855f7',
+    border: '#7e22ce',
+    pillBgDark: 'rgba(168, 85, 247, 0.25)',
+    pillBgLight: '#faf5ff',
+    pillTextDark: '#c084fc',
+    pillTextLight: '#6b21a8',
+  },
+  outro: {
+    nome: 'Outros Dispositivos',
+    icone: '📱',
+    accent: '#64748b',
+    border: '#475569',
+    pillBgDark: 'rgba(100, 116, 139, 0.25)',
+    pillBgLight: '#f1f5f9',
+    pillTextDark: '#94a3b8',
+    pillTextLight: '#334155',
+  },
 };
 
 /** Escapa texto para HTML seguro dentro de nós Mermaid. */
@@ -121,9 +187,10 @@ function limparTexto(str: string): string {
   return str.replace(/["[\]{}|<>]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-/** Formata um card de servidor com HTML moderno enriquecido com dados do Inventário de TI. */
+/** Formata um card de servidor interativo com link clicável para abrir no Inventário. */
 function renderCardServidor(s: Servidor, densidade: DensidadeNo = 'compacto', isDark = true): string {
-  const cat = CORES_CATEGORIA[s.categoria] ?? CORES_CATEGORIA.web;
+  const chaveEstilo = s.inventario?.tipo ?? s.categoria;
+  const cat = CORES_CATEGORIA[chaveEstilo] ?? CORES_CATEGORIA.web;
   const isAlive = s.state === 'alive';
   const statusColor = isAlive ? '#10b981' : '#64748b';
   const statusLabel = isAlive ? 'ON' : 'OFF';
@@ -137,7 +204,7 @@ function renderCardServidor(s: Servidor, densidade: DensidadeNo = 'compacto', is
   const textColor = isDark ? '#f8fafc' : '#0f172a';
   const subTextColor = isDark ? '#94a3b8' : '#64748b';
 
-  // Badges de portas em linha compacta
+  // Badges de portas
   const pills = portasVisiveis
     .map(
       (p) =>
@@ -152,12 +219,14 @@ function renderCardServidor(s: Servidor, densidade: DensidadeNo = 'compacto', is
       ? `<span style='background:rgba(148,163,184,0.2);color:${subTextColor};font:8px monospace;padding:0 3px;border-radius:2px;'>+${portasRestantes}</span>`
       : '';
 
-  // Metadados do Inventário de TI
+  // Badge do Inventário com link clicável
   const inv = s.inventario;
   let badgeInventario = '';
   if (inv) {
     const pat = escapeHtml(inv.numeroPatrimonio);
-    badgeInventario = `<span style='background:rgba(59,130,246,0.2);border:1px solid #3b82f6;color:${isDark ? '#93c5fd' : '#1d4ed8'};font:700 8.5px monospace;padding:0 3px;border-radius:2px;'>🏷️ ${pat}</span>`;
+    badgeInventario = `<a href='/inventario/${inv.itemId}' target='_blank' style='text-decoration:none;' title='Abrir item ${pat} no inventário'>` +
+      `<span style='background:rgba(59,130,246,0.25);border:1px solid #3b82f6;color:${isDark ? '#93c5fd' : '#1d4ed8'};font:700 8.5px monospace;padding:0 4px;border-radius:2px;cursor:pointer;'>🏷️ ${pat} ↗</span>` +
+      `</a>`;
   } else {
     badgeInventario = `<span style='background:rgba(239,68,68,0.2);border:1px solid #ef4444;color:${isDark ? '#fca5a5' : '#b91c1c'};font:700 8px sans-serif;padding:0 3px;border-radius:2px;'>🚨 Shadow IT</span>`;
   }
@@ -173,8 +242,12 @@ function renderCardServidor(s: Servidor, densidade: DensidadeNo = 'compacto', is
   if (densidade === 'detalhado' && respClean) partesDesc.push(respClean);
   const desc = partesDesc.filter(Boolean).join(' · ');
 
+  const conteudoRodape = pills
+    ? `${pills}${restantePill}`
+    : `<span style='background:rgba(148,163,184,0.15);font:600 8px sans-serif;padding:0 4px;border-radius:2px;color:${subTextColor};'>${escapeHtml(inv?.tipo ?? 'equipamento')}</span>`;
+
   const minW = densidade === 'compacto' ? '165px' : '205px';
-  const maxW = densidade === 'compacto' ? '210px' : '260px';
+  const maxW = densidade === 'compacto' ? '215px' : '265px';
 
   return `<div style='text-align:left;min-width:${minW};max-width:${maxW};padding:1px 2px;font:11px system-ui;'>` +
     `<div style='display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(148,163,184,0.2);padding-bottom:2px;margin-bottom:2px;gap:4px;'>` +
@@ -185,7 +258,7 @@ function renderCardServidor(s: Servidor, densidade: DensidadeNo = 'compacto', is
     `</div>` +
     `</div>` +
     (desc ? `<div style='font-size:9px;color:${subTextColor};margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'>${desc}</div>` : '') +
-    `<div style='display:flex;flex-wrap:wrap;gap:2px;'>${pills}${restantePill}</div>` +
+    `<div style='display:flex;flex-wrap:wrap;gap:2px;'>${conteudoRodape}</div>` +
     `</div>`;
 }
 
@@ -198,7 +271,7 @@ function obterSubrede(ip: string): string {
   return 'Rede Geral';
 }
 
-/** Configuração base do tema Mermaid (com maxTextSize expandido). */
+/** Configuração base do tema Mermaid. */
 function gerarDiretivaTema(isDark = true): string {
   return `%%{init: {
   "maxTextSize": 1000000,
@@ -228,22 +301,38 @@ function gerarClassDefs(isDark = true): string[] {
     `classDef ad fill:${isDark ? '#1e1c16' : '#fffbeb'},stroke:#f59e0b,stroke-width:1.5px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
     `classDef banco fill:${isDark ? '#0e1f1a' : '#ecfdf5'},stroke:#10b981,stroke-width:1.5px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
     `classDef web fill:${isDark ? '#0f1c2e' : '#f0f9ff'},stroke:#0ea5e9,stroke-width:1.5px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
+    `classDef servidor fill:${isDark ? '#0f1c2e' : '#f0f9ff'},stroke:#0ea5e9,stroke-width:1.5px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
+    `classDef desktop fill:${isDark ? '#1a1936' : '#eef2ff'},stroke:#6366f1,stroke-width:1.5px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
+    `classDef impressora fill:${isDark ? '#0e2329' : '#ecfeff'},stroke:#06b6d4,stroke-width:1.5px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
+    `classDef switchEquip fill:${isDark ? '#231530' : '#faf5ff'},stroke:#a855f7,stroke-width:1.5px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
+    `classDef outro fill:${isDark ? '#1e293b' : '#f1f5f9'},stroke:#64748b,stroke-width:1.5px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
     `classDef gateway fill:${isDark ? '#1e1b4b' : '#ede9fe'},stroke:#8b5cf6,stroke-width:2px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
     `classDef summary fill:${isDark ? '#0f172a' : '#f8fafc'},stroke:#64748b,stroke-width:1px,color:${isDark ? '#94a3b8' : '#475569'};`,
   ];
 }
 
-/** Filtra servidores com base nos filtros de categoria, inventário e busca textual. */
+/** Gera a classe CSS apropriada para o nó. */
+function obterClasseNo(s: Servidor, criterio: CriterioAgrupamento): string {
+  if (criterio === 'tipo_inventario') {
+    const t = s.inventario?.tipo;
+    if (t === 'switch') return 'switchEquip';
+    if (t === 'desktop' || t === 'notebook') return 'desktop';
+    if (t === 'impressora') return 'impressora';
+    if (t === 'servidor') return 'servidor';
+    return 'outro';
+  }
+  return s.categoria;
+}
+
+/** Filtra servidores com base nos filtros de inventário e busca textual. */
 function filtrarServidores(servidores: Servidor[], opcoes: OpcoesMermaid): Servidor[] {
   const { filtroInventario = 'todos', filtroTexto = '' } = opcoes;
   const term = filtroTexto.trim().toLowerCase();
 
   return servidores.filter((s) => {
-    // Filtro por status do inventário (Todos / Inventariados / Shadow IT)
     if (filtroInventario === 'inventariados' && !s.inventario) return false;
     if (filtroInventario === 'shadow_it' && s.inventario) return false;
 
-    // Filtro textual
     if (!term) return true;
     return (
       s.address.toLowerCase().includes(term) ||
@@ -253,15 +342,27 @@ function filtrarServidores(servidores: Servidor[], opcoes: OpcoesMermaid): Servi
       (s.inventario?.setor && s.inventario.setor.toLowerCase().includes(term)) ||
       (s.inventario?.responsavel && s.inventario.responsavel.toLowerCase().includes(term)) ||
       (s.inventario?.tipo && s.inventario.tipo.toLowerCase().includes(term)) ||
+      (s.inventario?.modelo && s.inventario.modelo.toLowerCase().includes(term)) ||
       s.portas.some((p) => String(p.port).includes(term) || (p.name && p.name.toLowerCase().includes(term)))
     );
   });
 }
 
+/** Adiciona eventos de clique interativos nos nós do Mermaid para abrir o inventário diretamente. */
+function adicionarCliquesInterativos(linhas: string[], servidores: Servidor[]) {
+  const adicionados = new Set<number>();
+  for (const s of servidores) {
+    if (s.inventario?.itemId && !adicionados.has(s.id)) {
+      adicionados.add(s.id);
+      const pat = limparTexto(s.inventario.numeroPatrimonio);
+      linhas.push(`  click srv_${s.id} href "/inventario/${s.inventario.itemId}" "Abrir ${pat} no Inventário" _blank`);
+    }
+  }
+}
+
 /**
  * 1. VISÃO TOPOLOGIA (Padrão Executivo):
- * Mostra o diagrama arquitetural completo com Gateway, Zonas de Função,
- * fluxos de rede, patrimônios do inventário e nós de resumo.
+ * Mostra o diagrama arquitetural completo conectado ao Gateway e Zonas do Inventário.
  */
 function gerarVisaoTopologia(estrutura: Estrutura, opcoes: OpcoesMermaid): string {
   const { isDark = true, direcao = 'TB', densidade = 'compacto' } = opcoes;
@@ -282,7 +383,6 @@ function gerarVisaoTopologia(estrutura: Estrutura, opcoes: OpcoesMermaid): strin
     shadowIt: todosServidores.filter((s) => !s.inventario).length,
   };
 
-  // Nó Gateway / Perímetro
   linhas.push(
     `  GW["<div style='padding:6px 12px;min-width:220px;text-align:center;'>` +
       `<div style='font-size:13px;font-weight:700;'>🌐 Borda de Rede &amp; Gateway</div>` +
@@ -291,7 +391,7 @@ function gerarVisaoTopologia(estrutura: Estrutura, opcoes: OpcoesMermaid): strin
       `</div>"]:::gateway`
   );
 
-  linhas.push(`  subgraph INFRA ["🏰 Zonas de Serviço &amp; Infraestrutura Corporativa"]`);
+  linhas.push(`  subgraph INFRA ["🏰 Zonas de Infraestrutura &amp; Inventário"]`);
   linhas.push(`    direction LR`);
 
   const descricaoPortas: Record<Categoria, string> = {
@@ -299,6 +399,8 @@ function gerarVisaoTopologia(estrutura: Estrutura, opcoes: OpcoesMermaid): strin
     banco: 'PostgreSQL 5432 · MSSQL 1433 · MySQL 3306',
     web: 'HTTP 80/443 · SSH 22 · Aplicações Web',
   };
+
+  const servidoresRenderizados: Servidor[] = [];
 
   for (const grupo of estrutura.grupos) {
     const cat = CORES_CATEGORIA[grupo.categoria];
@@ -319,6 +421,7 @@ function gerarVisaoTopologia(estrutura: Estrutura, opcoes: OpcoesMermaid): strin
 
     const destaques = servidoresFiltrados.slice(0, 3);
     for (const s of destaques) {
+      servidoresRenderizados.push(s);
       linhas.push(`      srv_${s.id}["${renderCardServidor(s, densidade, isDark)}"]:::${s.categoria}`);
     }
 
@@ -343,12 +446,16 @@ function gerarVisaoTopologia(estrutura: Estrutura, opcoes: OpcoesMermaid): strin
   if (temWeb && temAd) linhas.push(`  hub_web -.->|"Autenticação LDAP e Kerberos"| hub_ad`);
   if (temWeb && temBanco) linhas.push(`  hub_web ==>|"Consultas e Pools SQL"| hub_banco`);
 
+  // Adiciona cliques para abrir o item no inventário
+  adicionarCliquesInterativos(linhas, servidoresRenderizados);
+
   return linhas.join('\n');
 }
 
 /**
- * 2. VISÃO GRADE DE RACKS EM MATRIZ:
- * Organiza os servidores com identificação de Patrimônio em matriz balanceada (4 racks por linha).
+ * 2. VISÃO GRADE DE RACKS EM MATRIZ LIGADA AO INVENTÁRIO:
+ * Permite organizar em matriz tanto por Função de Portas quanto por Tipo de Equipamento (Inventário)
+ * ou Setor da Empresa, com links clicáveis diretamente para cada equipamento no inventário.
  */
 function gerarVisaoGrade(estrutura: Estrutura, opcoes: OpcoesMermaid): string {
   const {
@@ -356,13 +463,44 @@ function gerarVisaoGrade(estrutura: Estrutura, opcoes: OpcoesMermaid): string {
     direcao = 'TB',
     densidade = 'compacto',
     categoriaFiltro = 'todas',
+    criterioAgrupamento = 'funcao',
   } = opcoes;
 
   const linhas: string[] = [gerarDiretivaTema(isDark), `flowchart ${direcao}`];
   linhas.push(...gerarClassDefs(isDark));
 
-  const gruposFiltrados = estrutura.grupos
-    .filter((g) => categoriaFiltro === 'todas' || g.categoria === categoriaFiltro)
+  // Seleciona a fonte de grupos conforme o critério (Função, Tipo do Inventário ou Setor)
+  type GrupoGenerico = { chave: string; label: string; icone?: string; cor?: string; servidores: Servidor[] };
+  let listaGrupos: GrupoGenerico[] = [];
+
+  if (criterioAgrupamento === 'tipo_inventario' && estrutura.gruposTipo) {
+    listaGrupos = estrutura.gruposTipo.map((g) => ({
+      chave: g.chave,
+      label: g.label,
+      icone: g.icone,
+      cor: g.cor,
+      servidores: g.servidores,
+    }));
+  } else if (criterioAgrupamento === 'setor' && estrutura.gruposSetor) {
+    listaGrupos = estrutura.gruposSetor.map((g) => ({
+      chave: g.chave,
+      label: g.label,
+      icone: g.icone,
+      cor: g.cor,
+      servidores: g.servidores,
+    }));
+  } else {
+    listaGrupos = estrutura.grupos.map((g) => ({
+      chave: g.categoria,
+      label: g.label,
+      icone: CORES_CATEGORIA[g.categoria]?.icone ?? '🖥️',
+      cor: g.categoria,
+      servidores: g.servidores,
+    }));
+  }
+
+  const gruposFiltrados = listaGrupos
+    .filter((g) => categoriaFiltro === 'todas' || g.chave === categoriaFiltro)
     .map((g) => ({
       ...g,
       servidores: filtrarServidores(g.servidores, opcoes),
@@ -371,19 +509,20 @@ function gerarVisaoGrade(estrutura: Estrutura, opcoes: OpcoesMermaid): string {
 
   if (gruposFiltrados.length === 0) {
     linhas.push(
-      `  VAZIO["🔍 Nenhum servidor encontrado para os filtros selecionados"]:::summary`
+      `  VAZIO["🔍 Nenhum equipamento encontrado para os filtros selecionados"]:::summary`
     );
     return linhas.join('\n');
   }
 
   const SERVIDORES_POR_RACK = 5;
   const RACKS_POR_LINHA = 4;
+  const servidoresRenderizados: Servidor[] = [];
 
   for (const grupo of gruposFiltrados) {
-    const cat = CORES_CATEGORIA[grupo.categoria];
-    const sgCatId = `CAT_${grupo.categoria.toUpperCase()}`;
+    const icone = grupo.icone ?? '🖥️';
+    const sgCatId = `CAT_${limparTexto(grupo.chave).toUpperCase()}`;
 
-    linhas.push(`  subgraph ${sgCatId} ["${cat.icone} ${limparTexto(grupo.label)} (${grupo.servidores.length})"]`);
+    linhas.push(`  subgraph ${sgCatId} ["${icone} ${limparTexto(grupo.label)} (${grupo.servidores.length})"]`);
     linhas.push(`    direction TB`);
 
     const servidores = grupo.servidores;
@@ -391,12 +530,12 @@ function gerarVisaoGrade(estrutura: Estrutura, opcoes: OpcoesMermaid): string {
     const totalLinhas = Math.ceil(totalRacks / RACKS_POR_LINHA);
 
     for (let l = 0; l < totalLinhas; l++) {
-      const rowId = `ROW_${grupo.categoria}_${l + 1}`;
+      const rowId = `ROW_${limparTexto(grupo.chave)}_${l + 1}`;
       linhas.push(`    subgraph ${rowId} ["Racks ${l * RACKS_POR_LINHA + 1} a ${Math.min((l + 1) * RACKS_POR_LINHA, totalRacks)}"]`);
       linhas.push(`      direction LR`);
 
       for (let r = l * RACKS_POR_LINHA; r < Math.min((l + 1) * RACKS_POR_LINHA, totalRacks); r++) {
-        const rackId = `RACK_${grupo.categoria}_${r + 1}`;
+        const rackId = `RACK_${limparTexto(grupo.chave)}_${r + 1}`;
         const faixa = servidores.slice(r * SERVIDORES_POR_RACK, (r + 1) * SERVIDORES_POR_RACK);
         const primeiroIp = faixa[0]?.address.split('.').pop() ?? '0';
         const ultimoIp = faixa[faixa.length - 1]?.address.split('.').pop() ?? '0';
@@ -405,7 +544,9 @@ function gerarVisaoGrade(estrutura: Estrutura, opcoes: OpcoesMermaid): string {
         linhas.push(`        direction TB`);
 
         for (const s of faixa) {
-          linhas.push(`        srv_${s.id}["${renderCardServidor(s, densidade, isDark)}"]:::${s.categoria}`);
+          servidoresRenderizados.push(s);
+          const classe = obterClasseNo(s, criterioAgrupamento);
+          linhas.push(`        srv_${s.id}["${renderCardServidor(s, densidade, isDark)}"]:::${classe}`);
         }
 
         linhas.push(`      end`);
@@ -417,15 +558,18 @@ function gerarVisaoGrade(estrutura: Estrutura, opcoes: OpcoesMermaid): string {
     linhas.push(`  end`);
   }
 
+  // Ativa cliques em cada nó para abrir a ficha no inventário
+  adicionarCliquesInterativos(linhas, servidoresRenderizados);
+
   return linhas.join('\n');
 }
 
 /**
  * 3. VISÃO POR SUB-REDE EM MATRIZ:
- * Agrupa os servidores por prefixo IP /24 com dados do Inventário de TI.
+ * Agrupa os servidores por prefixo IP /24 com links para o Inventário.
  */
 function gerarVisaoSubrede(estrutura: Estrutura, opcoes: OpcoesMermaid): string {
-  const { isDark = true, direcao = 'TB', densidade = 'compacto' } = opcoes;
+  const { isDark = true, direcao = 'TB', densidade = 'compacto', criterioAgrupamento = 'funcao' } = opcoes;
   const linhas: string[] = [gerarDiretivaTema(isDark), `flowchart ${direcao}`];
   linhas.push(...gerarClassDefs(isDark));
 
@@ -441,6 +585,7 @@ function gerarVisaoSubrede(estrutura: Estrutura, opcoes: OpcoesMermaid): string 
   let indexSub = 0;
   const SERVIDORES_POR_BLOCO = 5;
   const BLOCOS_POR_LINHA = 4;
+  const servidoresRenderizados: Servidor[] = [];
 
   for (const [subrede, servidores] of mapaSubredes.entries()) {
     indexSub++;
@@ -465,7 +610,9 @@ function gerarVisaoSubrede(estrutura: Estrutura, opcoes: OpcoesMermaid): string 
         linhas.push(`        direction TB`);
 
         for (const s of faixa) {
-          linhas.push(`        srv_${s.id}["${renderCardServidor(s, densidade, isDark)}"]:::${s.categoria}`);
+          servidoresRenderizados.push(s);
+          const classe = obterClasseNo(s, criterioAgrupamento);
+          linhas.push(`        srv_${s.id}["${renderCardServidor(s, densidade, isDark)}"]:::${classe}`);
         }
 
         linhas.push(`      end`);
@@ -476,6 +623,9 @@ function gerarVisaoSubrede(estrutura: Estrutura, opcoes: OpcoesMermaid): string 
 
     linhas.push(`  end`);
   }
+
+  // Ativa cliques em cada nó para abrir a ficha no inventário
+  adicionarCliquesInterativos(linhas, servidoresRenderizados);
 
   return linhas.join('\n');
 }

@@ -5,9 +5,10 @@ import { hostsComPortas, type HostComPortas, type PortaServico } from './msf-rep
 import { ipSemMascara, normalizarMac } from './util';
 
 /**
- * Mapa de estrutura de servidores: lê os hosts do msf (somente leitura),
- * cruza dinamicamente com o inventário próprio (inventario.itens e interfaces)
- * e classifica por função a partir das portas abertas.
+ * Mapa de estrutura de servidores e infraestrutura:
+ * Lê os hosts do msf e cruza com a tabela de inventário de TI (inventario.itens e interfaces),
+ * permitindo agrupar tanto por funções de rede (portas abertas) quanto por dados reais
+ * do inventário (tipo de equipamento, setor, localização física e patrimônio).
  */
 
 export const CATEGORIAS_SERVIDOR = ['ad', 'banco', 'web'] as const;
@@ -19,9 +20,8 @@ export const CATEGORIA_SERVIDOR_LABEL: Record<CategoriaServidor, string> = {
   web: 'Servidores Web & Aplicações',
 };
 
-// Portas que definem cada função. A ordem de avaliação importa: AD vence banco, banco vence web.
-const PORTAS_AD = new Set([88, 389, 636, 3268, 3269]); // kerberos-sec / ldap(s) / global catalog
-const PORTAS_BANCO = new Set([1433, 1521, 3306, 5432, 27017]); // mssql / oracle / mysql / postgres / mongo
+const PORTAS_AD = new Set([88, 389, 636, 3268, 3269]);
+const PORTAS_BANCO = new Set([1433, 1521, 3306, 5432, 27017]);
 
 const NOMES_BANCO = /ms-sql|mssql|mysql|postgres|oracle|mongo/i;
 const NOMES_AD = /kerberos|ldap/i;
@@ -58,6 +58,7 @@ export type Servidor = {
   updatedAt: Date | null;
   categoria: CategoriaServidor;
   portas: PortaServico[];
+  origem: 'msf' | 'inventario';
   inventario: InfoInventario | null;
 };
 
@@ -67,14 +68,25 @@ export type GrupoEstrutura = {
   servidores: Servidor[];
 };
 
+export type GrupoPersonalizado = {
+  chave: string;
+  label: string;
+  icone: string;
+  cor: string;
+  servidores: Servidor[];
+};
+
 export type ResumoInventario = {
   total: number;
   inventariados: number;
   shadowIt: number;
+  totalApenasInventario: number;
 };
 
 export type Estrutura = {
   grupos: GrupoEstrutura[];
+  gruposTipo: GrupoPersonalizado[];
+  gruposSetor: GrupoPersonalizado[];
   total: number;
   geradoEm: string;
   resumoInventario: ResumoInventario;
@@ -87,6 +99,8 @@ type ItemInventarioDb = {
   mac: string | null;
   ip: string | null;
   hostname: string | null;
+  os_name: string | null;
+  os_flavor: string | null;
   tipo: string;
   status: string;
   setor: string | null;
@@ -102,13 +116,26 @@ type InterfaceDb = {
   ip: string | null;
 };
 
+const ICONES_TIPO: Record<string, { icone: string; cor: string; label: string }> = {
+  servidor: { icone: '🖥️', cor: 'blue', label: 'Servidores' },
+  desktop: { icone: '💻', cor: 'indigo', label: 'Estações de Trabalho (Desktops)' },
+  notebook: { icone: '💻', cor: 'teal', label: 'Notebooks' },
+  impressora: { icone: '🖨️', cor: 'cyan', label: 'Impressoras de Rede' },
+  switch: { icone: '🔀', cor: 'violet', label: 'Switches e Roteadores' },
+  outro: { icone: '📱', cor: 'gray', label: 'Outros Equipamentos' },
+};
+
 /** Monta o mapa de servidores cruzando em tempo real os hosts do MSF com o Inventário de TI. */
-export async function montarEstrutura(workspaceId?: number): Promise<Estrutura> {
+export async function montarEstrutura(
+  workspaceId?: number,
+  escopo: 'apenas_msf' | 'todos_inventario' = 'todos_inventario'
+): Promise<Estrutura> {
   const [hosts, itensRes, ifacesRes] = await Promise.all([
     hostsComPortas(workspaceId),
     db().execute<ItemInventarioDb>(sql`
       SELECT i.id, i.numero_patrimonio, i.patrimonio_provisorio,
              lower(i.mac) AS mac, host(i.ip) AS ip, i.hostname,
+             i.os_name, i.os_flavor,
              i.tipo, i.status, i.setor, i.localizacao, i.modelo, i.fabricante,
              f.nome AS responsavel
       FROM inventario.itens i
@@ -140,15 +167,20 @@ export async function montarEstrutura(workspaceId?: number): Promise<Estrutura> 
     if (ip && !porIp.has(ip)) porIp.set(ip, it);
   }
 
+  const matchedItemIds = new Set<number>();
   let totalInventariados = 0;
 
+  // 1. Processa os hosts descobertos no Metasploit
   const servidores: Servidor[] = hosts.map((h) => {
     const portas = Array.isArray(h.portas) ? h.portas : [];
     const mac = normalizarMac(h.mac);
     const ip = ipSemMascara(h.address);
 
     const match = (mac ? porMac.get(mac) : null) || (ip ? porIp.get(ip) : null);
-    if (match) totalInventariados++;
+    if (match) {
+      totalInventariados++;
+      matchedItemIds.add(match.id);
+    }
 
     const inventario: InfoInventario | null = match
       ? {
@@ -169,31 +201,114 @@ export async function montarEstrutura(workspaceId?: number): Promise<Estrutura> 
       id: h.id,
       address: h.address,
       mac: h.mac,
-      name: h.name,
-      os: [h.os_name, h.os_flavor].filter(Boolean).join(' ') || null,
+      name: h.name || (match ? match.hostname : null),
+      os: [h.os_name, h.os_flavor].filter(Boolean).join(' ') || (match ? [match.os_name, match.os_flavor].filter(Boolean).join(' ') : null),
       workspace: h.workspace,
       state: h.state,
       updatedAt: h.updated_at,
       categoria: classificar(portas),
       portas,
+      origem: 'msf' as const,
       inventario,
     };
   });
 
+  let totalApenasInventario = 0;
+
+  // 2. Se o escopo permitir, inclui também os itens do inventário que não foram escaneados pelo MSF
+  if (escopo === 'todos_inventario') {
+    for (const it of itensRes.rows) {
+      if (!matchedItemIds.has(it.id)) {
+        totalApenasInventario++;
+        totalInventariados++;
+        const ip = ipSemMascara(it.ip) || 'Sem IP';
+
+        servidores.push({
+          id: 100000 + it.id,
+          address: ip,
+          mac: it.mac,
+          name: it.hostname,
+          os: [it.os_name, it.os_flavor].filter(Boolean).join(' ') || null,
+          workspace: null,
+          state: 'alive',
+          updatedAt: null,
+          categoria: 'web', // categoria padrão para layout
+          portas: [],
+          origem: 'inventario' as const,
+          inventario: {
+            itemId: it.id,
+            numeroPatrimonio: it.numero_patrimonio,
+            patrimonioProvisorio: it.patrimonio_provisorio,
+            tipo: it.tipo,
+            status: it.status,
+            setor: it.setor,
+            localizacao: it.localizacao,
+            responsavel: it.responsavel,
+            modelo: it.modelo,
+            fabricante: it.fabricante,
+          },
+        });
+      }
+    }
+  }
+
+  // Grupos por função de portas (AD / Banco / Web)
   const grupos: GrupoEstrutura[] = CATEGORIAS_SERVIDOR.map((categoria) => ({
     categoria,
     label: CATEGORIA_SERVIDOR_LABEL[categoria],
     servidores: servidores.filter((s) => s.categoria === categoria),
   })).filter((g) => g.servidores.length > 0);
 
+  // Grupos por Tipo de Equipamento do Inventário
+  const mapaTipos = new Map<string, Servidor[]>();
+  for (const s of servidores) {
+    const t = s.inventario?.tipo ?? 'outro';
+    if (!mapaTipos.has(t)) mapaTipos.set(t, []);
+    mapaTipos.get(t)!.push(s);
+  }
+
+  const gruposTipo: GrupoPersonalizado[] = Array.from(mapaTipos.entries())
+    .map(([tipo, srvs]) => {
+      const cfg = ICONES_TIPO[tipo] ?? { icone: '📱', cor: 'gray', label: tipo };
+      return {
+        chave: tipo,
+        label: cfg.label,
+        icone: cfg.icone,
+        cor: cfg.cor,
+        servidores: srvs,
+      };
+    })
+    .sort((a, b) => b.servidores.length - a.servidores.length);
+
+  // Grupos por Setor do Inventário
+  const mapaSetores = new Map<string, Servidor[]>();
+  for (const s of servidores) {
+    const st = s.inventario?.setor?.trim() || 'Geral / Sem Setor';
+    if (!mapaSetores.has(st)) mapaSetores.set(st, []);
+    mapaSetores.get(st)!.push(s);
+  }
+
+  const gruposSetor: GrupoPersonalizado[] = Array.from(mapaSetores.entries())
+    .map(([setor, srvs]) => ({
+      chave: setor,
+      label: setor,
+      icone: '📍',
+      cor: 'teal',
+      servidores: srvs,
+    }))
+    .sort((a, b) => b.servidores.length - a.servidores.length);
+
   return {
     grupos,
+    gruposTipo,
+    gruposSetor,
     total: servidores.length,
     geradoEm: new Date().toISOString(),
     resumoInventario: {
       total: servidores.length,
       inventariados: totalInventariados,
-      shadowIt: servidores.length - totalInventariados,
+      shadowIt: servidores.filter((s) => !s.inventario).length,
+      totalApenasInventario,
     },
   };
 }
