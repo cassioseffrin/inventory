@@ -38,6 +38,7 @@ export const tipoEquipamento = inv.enum('tipo_equipamento', [
   'servidor',
   'impressora',
   'switch',
+  'smart_pos',
   'outro',
 ]);
 export const statusItem = inv.enum('status_item', ['em_uso', 'estoque', 'manutencao', 'baixado']);

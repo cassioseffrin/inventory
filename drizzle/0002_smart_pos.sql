@@ -1,0 +1,1 @@
+ALTER TYPE "inventario"."tipo_equipamento" ADD VALUE 'smart_pos' BEFORE 'outro';

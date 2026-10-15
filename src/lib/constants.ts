@@ -1,6 +1,6 @@
 // Constantes e rótulos compartilhados entre servidor e cliente.
 
-export const TIPOS = ['desktop', 'notebook', 'servidor', 'impressora', 'switch', 'outro'] as const;
+export const TIPOS = ['desktop', 'notebook', 'servidor', 'impressora', 'switch', 'smart_pos', 'outro'] as const;
 export const STATUS = ['em_uso', 'estoque', 'manutencao', 'baixado'] as const;
 export const TIPOS_CAMPO = ['texto', 'numero', 'data', 'lista'] as const;
 export const CATEGORIAS_SOFTWARE = [
@@ -25,6 +25,7 @@ export const TIPO_LABEL: Record<Tipo, string> = {
   servidor: 'Servidor',
   impressora: 'Impressora',
   switch: 'Switch',
+  smart_pos: 'Smart POS',
   outro: 'Outro',
 };
 

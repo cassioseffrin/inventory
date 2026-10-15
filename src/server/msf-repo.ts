@@ -145,7 +145,7 @@ export async function hostsComPortas(workspaceId?: number): Promise<HostComPorta
             ) AS portas
      FROM hosts h
      LEFT JOIN workspaces w ON w.id = h.workspace_id
-     WHERE EXISTS (SELECT 1 FROM services s WHERE s.host_id = h.id AND (s.state IS NULL OR s.state = 'open'))
+     WHERE (h.state IS NULL OR h.state = 'alive')
        ${filtro}
      ORDER BY h.address`,
     params,
@@ -193,4 +193,9 @@ export async function notasDoHost(hostId: number, limite = 100) {
      WHERE host_id = $1 ORDER BY created_at DESC NULLS LAST LIMIT $2`,
     [hostId, limite],
   );
+}
+
+export async function contarHosts() {
+  const [r] = await msfQuery<{ n: number }>('SELECT count(*)::int AS n FROM hosts');
+  return r?.n ?? 0;
 }

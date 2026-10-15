@@ -160,6 +160,16 @@ const CORES_CATEGORIA: Record<
     pillTextDark: '#c084fc',
     pillTextLight: '#6b21a8',
   },
+  smart_pos: {
+    nome: 'Smart POS',
+    icone: '💳',
+    accent: '#f97316',
+    border: '#ea580c',
+    pillBgDark: 'rgba(249, 115, 22, 0.25)',
+    pillBgLight: '#fff7ed',
+    pillTextDark: '#fb923c',
+    pillTextLight: '#c2410c',
+  },
   outro: {
     nome: 'Outros Dispositivos',
     icone: '📱',
@@ -263,7 +273,7 @@ function renderCardServidor(s: Servidor, densidade: DensidadeNo = 'compacto', is
 }
 
 /** Extrai o prefixo de sub-rede /24 do endereço IP. */
-function obterSubrede(ip: string): string {
+export function obterSubrede(ip: string): string {
   const partes = ip.split('.');
   if (partes.length === 4) {
     return `${partes[0]}.${partes[1]}.${partes[2]}.0/24`;
@@ -305,6 +315,7 @@ function gerarClassDefs(isDark = true): string[] {
     `classDef desktop fill:${isDark ? '#1a1936' : '#eef2ff'},stroke:#6366f1,stroke-width:1.5px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
     `classDef impressora fill:${isDark ? '#0e2329' : '#ecfeff'},stroke:#06b6d4,stroke-width:1.5px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
     `classDef switchEquip fill:${isDark ? '#231530' : '#faf5ff'},stroke:#a855f7,stroke-width:1.5px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
+    `classDef smartPos fill:${isDark ? '#2a1a0e' : '#fff7ed'},stroke:#f97316,stroke-width:1.5px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
     `classDef outro fill:${isDark ? '#1e293b' : '#f1f5f9'},stroke:#64748b,stroke-width:1.5px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
     `classDef gateway fill:${isDark ? '#1e1b4b' : '#ede9fe'},stroke:#8b5cf6,stroke-width:2px,color:${isDark ? '#f8fafc' : '#0f172a'};`,
     `classDef summary fill:${isDark ? '#0f172a' : '#f8fafc'},stroke:#64748b,stroke-width:1px,color:${isDark ? '#94a3b8' : '#475569'};`,
@@ -319,13 +330,14 @@ function obterClasseNo(s: Servidor, criterio: CriterioAgrupamento): string {
     if (t === 'desktop' || t === 'notebook') return 'desktop';
     if (t === 'impressora') return 'impressora';
     if (t === 'servidor') return 'servidor';
+    if (t === 'smart_pos') return 'smartPos';
     return 'outro';
   }
   return s.categoria;
 }
 
 /** Filtra servidores com base nos filtros de inventário e busca textual. */
-function filtrarServidores(servidores: Servidor[], opcoes: OpcoesMermaid): Servidor[] {
+export function filtrarServidores(servidores: Servidor[], opcoes: OpcoesMermaid): Servidor[] {
   const { filtroInventario = 'todos', filtroTexto = '' } = opcoes;
   const term = filtroTexto.trim().toLowerCase();
 
@@ -369,13 +381,25 @@ function gerarVisaoTopologia(estrutura: Estrutura, opcoes: OpcoesMermaid): strin
   const linhas: string[] = [gerarDiretivaTema(isDark), `flowchart ${direcao}`];
   linhas.push(...gerarClassDefs(isDark));
 
-  const todosServidores = estrutura.grupos.flatMap((g) => g.servidores);
+  const todosServidores = filtrarServidores(
+    estrutura.grupos.flatMap((g) => g.servidores),
+    opcoes
+  );
+
   const provavelGateway =
     todosServidores.find((s) => s.address.endsWith('.1')) ?? todosServidores[0];
   const ipGateway = provavelGateway ? provavelGateway.address : '192.168.50.1';
 
-  const subredes = Array.from(new Set(todosServidores.map((s) => obterSubrede(s.address))));
-  const subredePrincipal = subredes[0] ?? '192.168.50.0/24';
+  // Coleta todas as sub-redes presentes e ordena com a principal de infraestrutura primeiro
+  const subredesSet = new Set(todosServidores.map((s) => obterSubrede(s.address)));
+  const subredes = Array.from(subredesSet).sort((a, b) => {
+    if (a.includes('50.')) return -1;
+    if (b.includes('50.')) return 1;
+    return a.localeCompare(b);
+  });
+
+  const subredePrincipal = subredes.find((s) => s.includes('50.')) ?? subredes[0] ?? '192.168.50.0/24';
+  const outrasSubredes = subredes.filter((s) => s !== subredePrincipal);
 
   const resumo = estrutura.resumoInventario ?? {
     total: estrutura.total,
@@ -383,63 +407,128 @@ function gerarVisaoTopologia(estrutura: Estrutura, opcoes: OpcoesMermaid): strin
     shadowIt: todosServidores.filter((s) => !s.inventario).length,
   };
 
+  const listaSubredesFormatada = subredes.length > 0 ? subredes.join(' · ') : subredePrincipal;
+
   linhas.push(
-    `  GW["<div style='padding:6px 12px;min-width:220px;text-align:center;'>` +
-      `<div style='font-size:13px;font-weight:700;'>🌐 Borda de Rede &amp; Gateway</div>` +
-      `<div style='font-size:11px;font-family:monospace;color:#a855f7;margin-top:2px;'>${ipGateway} · Segmento ${subredePrincipal}</div>` +
+    `  GW["<div style='padding:6px 14px;min-width:240px;text-align:center;'>` +
+      `<div style='font-size:13px;font-weight:700;'>🌐 Borda de Rede &amp; Gateway Core</div>` +
+      `<div style='font-size:11px;font-family:monospace;color:#a855f7;margin-top:2px;'>${ipGateway}</div>` +
+      `<div style='font-size:10px;font-family:monospace;color:#38bdf8;margin-top:2px;'>Sub-redes: ${listaSubredesFormatada}</div>` +
       `<div style='font-size:9.5px;color:#94a3b8;margin-top:3px;'>${resumo.inventariados} Inventariados · ${resumo.shadowIt} Shadow IT</div>` +
       `</div>"]:::gateway`
   );
 
-  linhas.push(`  subgraph INFRA ["🏰 Zonas de Infraestrutura &amp; Inventário"]`);
-  linhas.push(`    direction LR`);
-
-  const descricaoPortas: Record<Categoria, string> = {
-    ad: 'Kerberos 88 · LDAP 389/636 · SMB 445 · DNS 53',
-    banco: 'PostgreSQL 5432 · MSSQL 1433 · MySQL 3306',
-    web: 'HTTP 80/443 · SSH 22 · Aplicações Web',
-  };
-
   const servidoresRenderizados: Servidor[] = [];
 
-  for (const grupo of estrutura.grupos) {
-    const cat = CORES_CATEGORIA[grupo.categoria];
-    const servidoresFiltrados = filtrarServidores(grupo.servidores, opcoes);
-    const totalGrupo = servidoresFiltrados.length;
-    const sgId = `SG_${grupo.categoria.toUpperCase()}`;
-    const hubId = `hub_${grupo.categoria}`;
+  // 1. ZONA DE SERVIDORES PRINCIPAL (AD, Bancos de Dados, Web & Aplicações)
+  const servidoresPrincipal = todosServidores.filter((s) => obterSubrede(s.address) === subredePrincipal);
+  if (servidoresPrincipal.length > 0) {
+    linhas.push(`  subgraph INFRA ["🏰 Zona de Servidores &amp; Infraestrutura (${subredePrincipal})"]`);
+    linhas.push(`    direction LR`);
 
-    linhas.push(`    subgraph ${sgId} ["${cat.icone} ${cat.nome} (${totalGrupo})"]`);
-    linhas.push(`      direction TB`);
+    const descricaoPortas: Record<Categoria, string> = {
+      ad: 'Kerberos 88 · LDAP 389/636 · SMB 445 · DNS 53',
+      banco: 'PostgreSQL 5432 · MSSQL 1433 · MySQL 3306',
+      web: 'HTTP 80/443 · SSH 22 · Aplicações Web',
+    };
 
-    linhas.push(
-      `      ${hubId}["<div style='padding:4px 8px;text-align:center;min-width:180px;'>` +
-        `<div style='font-weight:700;font-size:12px;'>${cat.icone} ${cat.nome}</div>` +
-        `<div style='font-size:9px;color:${isDark ? '#94a3b8' : '#64748b'};margin-top:2px;'>${descricaoPortas[grupo.categoria]}</div>` +
-        `</div>"]:::${grupo.categoria}`
-    );
+    for (const catKey of ['web', 'banco', 'ad'] as Categoria[]) {
+      const servidoresCat = servidoresPrincipal.filter((s) => s.categoria === catKey);
+      if (servidoresCat.length === 0) continue;
 
-    const destaques = servidoresFiltrados.slice(0, 3);
-    for (const s of destaques) {
-      servidoresRenderizados.push(s);
-      linhas.push(`      srv_${s.id}["${renderCardServidor(s, densidade, isDark)}"]:::${s.categoria}`);
+      const cat = CORES_CATEGORIA[catKey];
+      const totalGrupo = servidoresCat.length;
+      const sgId = `SG_${catKey.toUpperCase()}`;
+      const hubId = `hub_${catKey}`;
+
+      linhas.push(`    subgraph ${sgId} ["${cat.icone} ${cat.nome} (${totalGrupo})"]`);
+      linhas.push(`      direction TB`);
+
+      linhas.push(
+        `      ${hubId}["<div style='padding:4px 8px;text-align:center;min-width:180px;'>` +
+          `<div style='font-weight:700;font-size:12px;'>${cat.icone} ${cat.nome}</div>` +
+          `<div style='font-size:9px;color:${isDark ? '#94a3b8' : '#64748b'};margin-top:2px;'>${descricaoPortas[catKey]}</div>` +
+          `</div>"]:::${catKey}`
+      );
+
+      const destaques = servidoresCat.slice(0, 3);
+      for (const s of destaques) {
+        servidoresRenderizados.push(s);
+        linhas.push(`      srv_${s.id}["${renderCardServidor(s, densidade, isDark)}"]:::${s.categoria}`);
+      }
+
+      if (totalGrupo > 3) {
+        const restantes = totalGrupo - 3;
+        linhas.push(
+          `      res_${catKey}["<div style='font-size:10px;text-align:center;padding:4px 8px;'>📦 +${restantes} servidores adicionais</div>"]:::summary`
+        );
+      }
+
+      linhas.push(`    end`);
     }
 
-    if (totalGrupo > 3) {
-      const restantes = totalGrupo - 3;
+    linhas.push(`  end`);
+  }
+
+  // 2. DEMAIS SEGMENTOS DE REDE / SUB-REDES (Programação 192.168.3.0/24, Corporativo 192.168.100.0/24, etc.)
+  for (const sub of outrasSubredes) {
+    const servidoresSub = todosServidores.filter((s) => obterSubrede(s.address) === sub);
+    if (servidoresSub.length === 0) continue;
+
+    const cleanSub = sub.replace(/[^a-zA-Z0-9]/g, '_');
+    const sgSubId = `SG_${cleanSub}`;
+    const hubSubId = `hub_${cleanSub}`;
+
+    let icone = '🖧';
+    let nomeSegmento = `Segmento de Rede ${sub}`;
+    let vlanLabel = sub.replace('/24', '');
+
+    if (sub.startsWith('192.168.3.')) {
+      icone = '💻';
+      nomeSegmento = `Segmento Programação &amp; Dev (${sub})`;
+      vlanLabel = 'VLAN 3 · Programação';
+    } else if (sub.startsWith('192.168.100.')) {
+      icone = '🏢';
+      nomeSegmento = `Segmento Corporativo &amp; Estações (${sub})`;
+      vlanLabel = 'VLAN 100 · Corporativo';
+    }
+
+    linhas.push(`  subgraph ${sgSubId} ["${icone} ${nomeSegmento} (${servidoresSub.length} hosts)"]`);
+    linhas.push(`    direction TB`);
+
+    linhas.push(
+      `    ${hubSubId}["<div style='padding:4px 8px;text-align:center;min-width:180px;'>` +
+        `<div style='font-weight:700;font-size:12px;'>${icone} ${nomeSegmento}</div>` +
+        `<div style='font-size:9px;color:${isDark ? '#94a3b8' : '#64748b'};margin-top:2px;'>${servidoresSub.length} equipamentos conectados</div>` +
+        `</div>"]:::gateway`
+    );
+
+    // Se for até 8 equipamentos (como a rede de programação que tem 7 hosts), exibe TODOS sem esconder nenhum!
+    const limiteExibicao = servidoresSub.length <= 8 ? servidoresSub.length : 4;
+    const destaques = servidoresSub.slice(0, limiteExibicao);
+
+    for (const s of destaques) {
+      servidoresRenderizados.push(s);
+      linhas.push(`    srv_${s.id}["${renderCardServidor(s, densidade, isDark)}"]:::${s.categoria}`);
+    }
+
+    if (servidoresSub.length > limiteExibicao) {
+      const restantes = servidoresSub.length - limiteExibicao;
       linhas.push(
-        `      res_${grupo.categoria}["<div style='font-size:10px;text-align:center;padding:4px 8px;'>📦 +${restantes} servidores adicionais</div>"]:::summary`
+        `    res_${cleanSub}["<div style='font-size:10px;text-align:center;padding:4px 8px;'>📦 +${restantes} equipamentos adicionais</div>"]:::summary`
       );
     }
 
-    linhas.push(`    end`);
+    linhas.push(`  end`);
+
+    // Conexão direta do Gateway para o segmento da sub-rede
+    linhas.push(`  GW ==>|"${vlanLabel}"| ${hubSubId}`);
   }
 
-  linhas.push(`  end`);
-
-  const temWeb = estrutura.grupos.some((g) => g.categoria === 'web');
-  const temAd = estrutura.grupos.some((g) => g.categoria === 'ad');
-  const temBanco = estrutura.grupos.some((g) => g.categoria === 'banco');
+  // Conexões internas do Core de Infraestrutura
+  const temWeb = servidoresPrincipal.some((s) => s.categoria === 'web');
+  const temAd = servidoresPrincipal.some((s) => s.categoria === 'ad');
+  const temBanco = servidoresPrincipal.some((s) => s.categoria === 'banco');
 
   if (temWeb) linhas.push(`  GW ==>|"Tráfego Ingress e Web"| hub_web`);
   if (temAd) linhas.push(`  GW ==>|"Administração e Políticas"| hub_ad`);

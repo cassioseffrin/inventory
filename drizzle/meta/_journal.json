@@ -15,6 +15,13 @@
       "when": 1792068414259,
       "tag": "0001_patrimonio_provisorio",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792087997401,
+      "tag": "0002_smart_pos",
+      "breakpoints": true
     }
   ]
 }

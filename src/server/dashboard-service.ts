@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { db } from '@/db/inv';
 import { contarDuplicados } from './grupos-duplicados-service';
 import { hostsClassificados } from './hosts-service';
+import { contarHosts } from './msf-repo';
 
 type Contagem = { chave: string | null; total: number };
 
@@ -53,4 +54,27 @@ export async function dashboard() {
     porSo,
     porFuncionario,
   };
+}
+
+/** Totais exibidos como badge ao lado de cada entrada do menu lateral. */
+export async function contadoresMenu() {
+  const [r, duplicados] = await Promise.all([
+    db().execute<Record<string, number>>(sql`
+      SELECT (SELECT count(*)::int FROM inventario.itens) AS inventario,
+        (SELECT count(*)::int FROM inventario.funcionarios WHERE ativo) AS funcionarios,
+        (SELECT count(*)::int FROM inventario.grupos) AS grupos,
+        (SELECT count(*)::int FROM inventario.software_dicionario) AS software,
+        (SELECT count(*)::int FROM inventario.campos_customizados) AS campos`),
+    contarDuplicados(),
+  ]);
+
+  // msf fora do ar não deve derrubar o menu
+  let hosts: number | null = null;
+  try {
+    hosts = await contarHosts();
+  } catch {
+    /* sem badge para hosts */
+  }
+
+  return { ...r.rows[0], duplicados, hosts } as Record<string, number | null>;
 }

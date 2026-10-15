@@ -14,7 +14,7 @@
 #   -d               só descoberta rápida (-sn), sem portas/serviços
 #   -n               simular (dry-run): mostra o que seria importado, sem gravar
 #   -x               não escanear; só exportar o que já está no msf
-#   -t <tipo>        tipo padrão dos itens novos (desktop|notebook|servidor|impressora|switch|outro)
+#   -t <tipo>        tipo padrão dos itens novos (desktop|notebook|servidor|impressora|switch|smart_pos|outro)
 #   -s <status>      status dos itens novos (em_uso|estoque|manutencao|baixado). padrão: em_uso
 #   -g <tag>         TAG aplicada aos itens novos (ex.: filial, cliente, centro de custo)
 #   -l <local>       localização aplicada aos itens novos

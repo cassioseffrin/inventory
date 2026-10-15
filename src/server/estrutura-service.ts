@@ -122,6 +122,7 @@ const ICONES_TIPO: Record<string, { icone: string; cor: string; label: string }>
   notebook: { icone: '💻', cor: 'teal', label: 'Notebooks' },
   impressora: { icone: '🖨️', cor: 'cyan', label: 'Impressoras de Rede' },
   switch: { icone: '🔀', cor: 'violet', label: 'Switches e Roteadores' },
+  smart_pos: { icone: '💳', cor: 'orange', label: 'Smart POS' },
   outro: { icone: '📱', cor: 'gray', label: 'Outros Equipamentos' },
 };
 
