@@ -8,6 +8,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { api, mensagemErro } from '@/lib/api';
 import { cpfValido, mascaraCpf } from '@/lib/cpf';
+import { mascaraTelefone, telefoneValido } from '@/lib/telefone';
 import type { Funcionario } from '@/lib/types';
 
 const formSchema = z.object({
@@ -17,7 +18,7 @@ const formSchema = z.object({
   setor: z.string().max(100),
   cpf: z.string().refine((v) => v === '' || cpfValido(v), 'CPF inválido'),
   ramal: z.string().max(20),
-  celular: z.string().max(20),
+  celular: z.string().refine((v) => v === '' || telefoneValido(v), 'Celular inválido'),
   ativo: z.boolean(),
 });
 type FormValues = z.infer<typeof formSchema>;
@@ -34,7 +35,7 @@ export function FuncionarioModal({ inicial, onClose }: { inicial: Funcionario | 
       setor: editando?.setor ?? '',
       cpf: mascaraCpf(editando?.cpf),
       ramal: editando?.ramal ?? '',
-      celular: editando?.celular ?? '',
+      celular: mascaraTelefone(editando?.celular),
       ativo: editando?.ativo ?? true,
     },
   });
@@ -76,7 +77,22 @@ export function FuncionarioModal({ inicial, onClose }: { inicial: Funcionario | 
           <TextInput label="Setor" {...register('setor')} />
           <Group grow>
             <TextInput label="Ramal" {...register('ramal')} error={formState.errors.ramal?.message} />
-            <TextInput label="Celular" {...register('celular')} error={formState.errors.celular?.message} />
+            <Controller
+              control={control}
+              name="celular"
+              render={({ field }) => (
+                <TextInput
+                  label="Celular / WhatsApp"
+                  placeholder="(00) 00000-0000"
+                  inputMode="tel"
+                  value={field.value}
+                  onChange={(e) => field.onChange(mascaraTelefone(e.currentTarget.value))}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                  error={formState.errors.celular?.message}
+                />
+              )}
+            />
           </Group>
           <Controller control={control} name="ativo" render={({ field }) => <Switch label="Ativo" checked={field.value} onChange={(e) => field.onChange(e.currentTarget.checked)} />} />
           <Group justify="flex-end">

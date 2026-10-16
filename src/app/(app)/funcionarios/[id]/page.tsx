@@ -10,6 +10,7 @@ import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { api, mensagemErro } from '@/lib/api';
 import { mascaraCpf } from '@/lib/cpf';
+import { mascaraTelefone } from '@/lib/telefone';
 import { STATUS_COLOR, STATUS_LABEL, TIPO_LABEL, type Status, type Tipo } from '@/lib/constants';
 import type { Funcionario } from '@/lib/types';
 import { AssociarItensModal } from '@/components/AssociarItensModal';
@@ -110,7 +111,7 @@ export default function FuncionarioPage() {
             <Text size="xs" c="dimmed">
               Celular
             </Text>
-            <Text size="sm">{f.celular ?? '—'}</Text>
+            <Text size="sm">{f.celular ? mascaraTelefone(f.celular) : '—'}</Text>
           </div>
           <div>
             <Text size="xs" c="dimmed">
