@@ -1,8 +1,10 @@
 'use client';
 
-import { Alert, Anchor, Badge, Button, Card, Center, Group, Loader, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
-import { IconArrowLeft, IconEdit } from '@tabler/icons-react';
-import { useQuery } from '@tanstack/react-query';
+import { ActionIcon, Alert, Anchor, Badge, Button, Card, Center, Checkbox, Group, Loader, SimpleGrid, Stack, Table, Text, Title, Tooltip } from '@mantine/core';
+import { modals } from '@mantine/modals';
+import { notifications } from '@mantine/notifications';
+import { IconArrowLeft, IconEdit, IconLinkOff, IconPlus } from '@tabler/icons-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
@@ -10,6 +12,7 @@ import { api, mensagemErro } from '@/lib/api';
 import { mascaraCpf } from '@/lib/cpf';
 import { STATUS_COLOR, STATUS_LABEL, TIPO_LABEL, type Status, type Tipo } from '@/lib/constants';
 import type { Funcionario } from '@/lib/types';
+import { AssociarItensModal } from '@/components/AssociarItensModal';
 import { FuncionarioModal } from '@/components/FuncionarioModal';
 
 type Ficha = Omit<Funcionario, 'itens'> & {
@@ -19,8 +22,31 @@ type Ficha = Omit<Funcionario, 'itens'> & {
 
 export default function FuncionarioPage() {
   const { id } = useParams<{ id: string }>();
+  const qc = useQueryClient();
   const [editar, setEditar] = useState(false);
+  const [associar, setAssociar] = useState(false);
+  const [marcados, setMarcados] = useState<Set<number>>(new Set());
   const { data: f, isLoading, error } = useQuery({ queryKey: ['funcionario', id], queryFn: () => api<Ficha>(`/api/funcionarios/${id}`) });
+
+  const desassociar = (alvo: Ficha['itens']) =>
+    modals.openConfirmModal({
+      title: alvo.length === 1 ? `Desassociar ${alvo[0].numeroPatrimonio}?` : `Desassociar ${alvo.length} itens?`,
+      children: <Text size="sm">O(s) item(ns) ficará(ão) sem responsável. A alteração fica registrada no histórico.</Text>,
+      labels: { confirm: 'Desassociar', cancel: 'Cancelar' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await api(`/api/funcionarios/${id}/itens`, { method: 'POST', json: { remover: alvo.map((i) => i.id) } });
+          setMarcados(new Set());
+          qc.invalidateQueries({ queryKey: ['funcionario'] });
+          qc.invalidateQueries({ queryKey: ['funcionarios'] });
+          qc.invalidateQueries({ queryKey: ['itens'] });
+          notifications.show({ color: 'teal', message: `${alvo.length} item(ns) desassociado(s)` });
+        } catch (e) {
+          notifications.show({ color: 'red', message: mensagemErro(e) });
+        }
+      },
+    });
 
   if (isLoading)
     return (
@@ -97,13 +123,32 @@ export default function FuncionarioPage() {
         </SimpleGrid>
       </Card>
       <Card withBorder>
-        <Title order={5} mb="sm">
-          Itens associados
-        </Title>
+        <Group justify="space-between" mb="sm">
+          <Title order={5}>Itens associados</Title>
+          <Group gap="xs">
+            {marcados.size > 0 && (
+              <Button size="xs" variant="light" color="red" leftSection={<IconLinkOff size={14} />} onClick={() => desassociar(f.itens.filter((i) => marcados.has(i.id)))}>
+                Desassociar {marcados.size}
+              </Button>
+            )}
+            <Button size="xs" leftSection={<IconPlus size={14} />} onClick={() => setAssociar(true)}>
+              Associar itens
+            </Button>
+          </Group>
+        </Group>
         {f.itens.length ? (
           <Table striped highlightOnHover fz="sm">
             <Table.Thead>
               <Table.Tr>
+                <Table.Th w={36}>
+                  <Checkbox
+                    size="xs"
+                    aria-label="Selecionar todos"
+                    checked={marcados.size === f.itens.length}
+                    indeterminate={marcados.size > 0 && marcados.size < f.itens.length}
+                    onChange={(e) => setMarcados(e.currentTarget.checked ? new Set(f.itens.map((i) => i.id)) : new Set())}
+                  />
+                </Table.Th>
                 <Table.Th>Patrimônio</Table.Th>
                 <Table.Th>Tipo</Table.Th>
                 <Table.Th>Status</Table.Th>
@@ -111,11 +156,27 @@ export default function FuncionarioPage() {
                 <Table.Th>IP</Table.Th>
                 <Table.Th>SO</Table.Th>
                 <Table.Th>Localização</Table.Th>
+                <Table.Th w={40} />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {f.itens.map((i) => (
-                <Table.Tr key={i.id}>
+                <Table.Tr key={i.id} bg={marcados.has(i.id) ? 'var(--mantine-primary-color-light)' : undefined}>
+                  <Table.Td>
+                    <Checkbox
+                      size="xs"
+                      aria-label={`Selecionar ${i.numeroPatrimonio}`}
+                      checked={marcados.has(i.id)}
+                      onChange={() =>
+                        setMarcados((m) => {
+                          const n = new Set(m);
+                          if (n.has(i.id)) n.delete(i.id);
+                          else n.add(i.id);
+                          return n;
+                        })
+                      }
+                    />
+                  </Table.Td>
                   <Table.Td>
                     <Anchor component={Link} href={`/inventario/${i.id}`} size="sm" fw={600}>
                       {i.numeroPatrimonio}
@@ -131,16 +192,29 @@ export default function FuncionarioPage() {
                   <Table.Td className="mono">{i.ip ?? '—'}</Table.Td>
                   <Table.Td>{i.osName ?? '—'}</Table.Td>
                   <Table.Td>{i.localizacao ?? '—'}</Table.Td>
+                  <Table.Td>
+                    <Tooltip label="Desassociar">
+                      <ActionIcon variant="subtle" color="red" size="sm" aria-label="Desassociar" onClick={() => desassociar([i])}>
+                        <IconLinkOff size={16} />
+                      </ActionIcon>
+                    </Tooltip>
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
           </Table>
         ) : (
-          <Text c="dimmed" size="sm">
-            Nenhum item associado.
-          </Text>
+          <Stack align="center" gap="xs" py="lg">
+            <Text c="dimmed" size="sm">
+              Nenhum item associado.
+            </Text>
+            <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setAssociar(true)}>
+              Associar o primeiro item
+            </Button>
+          </Stack>
         )}
       </Card>
+      <AssociarItensModal funcionario={associar ? f : null} onClose={() => setAssociar(false)} />
       <FuncionarioModal inicial={editar ? { ...f, itens: f.itens.length } : null} onClose={() => setEditar(false)} />
     </Stack>
   );

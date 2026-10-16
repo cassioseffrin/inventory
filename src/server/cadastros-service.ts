@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, eq, getTableColumns, sql } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, inArray, sql } from 'drizzle-orm';
 import { db } from '@/db/inv';
 import {
   camposCustomizados,
@@ -71,6 +71,35 @@ export async function obterFuncionario(id: number) {
     .where(eq(itens.funcionarioId, id))
     .orderBy(asc(itens.numeroPatrimonio));
   return { ...f, itens: seusItens };
+}
+
+/**
+ * Associa (`adicionar`) ou desassocia (`remover`) itens do funcionário em lote.
+ * Itens de outro responsável são transferidos; tudo vira `troca_responsavel` no histórico.
+ */
+export async function associarItensFuncionario(id: number, d: { adicionar: number[]; remover: number[] }, usuario: string) {
+  return db().transaction(async (tx) => {
+    const [f] = await tx.select({ id: funcionarios.id }).from(funcionarios).where(eq(funcionarios.id, id));
+    if (!f) throw naoEncontrado('Funcionário');
+    const ids = [...new Set([...d.adicionar, ...d.remover])];
+    if (!ids.length) return { alterados: 0 };
+    const atuais = await tx
+      .select({ id: itens.id, numeroPatrimonio: itens.numeroPatrimonio, funcionarioId: itens.funcionarioId })
+      .from(itens)
+      .where(inArray(itens.id, ids))
+      .for('update');
+    const adicionar = new Set(d.adicionar);
+    let alterados = 0;
+    for (const it of atuais) {
+      // só desassocia o que ainda é deste funcionário
+      const novo = adicionar.has(it.id) ? id : it.funcionarioId === id ? null : it.funcionarioId;
+      if (novo === it.funcionarioId) continue;
+      await tx.update(itens).set({ funcionarioId: novo, updatedAt: new Date() }).where(eq(itens.id, it.id));
+      await registrar(tx, it, 'alteracao', usuario, [{ campo: 'funcionarioId', antigo: it.funcionarioId, novo }]);
+      alterados++;
+    }
+    return { alterados };
+  });
 }
 
 export async function criarFuncionario(d: FuncionarioInput) {

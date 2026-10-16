@@ -4,12 +4,13 @@ import { ActionIcon, Anchor, Badge, Button, Group, SegmentedControl, Stack, Text
 import { useDebouncedValue } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { IconEdit, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconLink, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { AssociarItensModal } from '@/components/AssociarItensModal';
 import { DataTable } from '@/components/DataTable';
 import { FuncionarioModal } from '@/components/FuncionarioModal';
 import { api, mensagemErro, qs, type Pagina } from '@/lib/api';
@@ -23,6 +24,7 @@ export default function FuncionariosPage() {
   const [ativo, setAtivo] = useState('true');
   const [page, setPage] = useState(1);
   const [editar, setEditar] = useState<Funcionario | 'novo' | null>(null);
+  const [associar, setAssociar] = useState<Funcionario | null>(null);
   const params = { q, ativo: ativo === 'todos' ? undefined : ativo, page, pageSize: 25 };
   const { data, isFetching } = useQuery({
     queryKey: ['funcionarios', params],
@@ -59,6 +61,11 @@ export default function FuncionariosPage() {
         header: '',
         cell: ({ row: { original: f } }) => (
           <Group gap={2} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+            <Tooltip label="Associar itens">
+              <ActionIcon variant="subtle" size="sm" onClick={() => setAssociar(f)} aria-label="Associar itens">
+                <IconLink size={16} />
+              </ActionIcon>
+            </Tooltip>
             <Tooltip label="Editar">
               <ActionIcon variant="subtle" size="sm" onClick={() => setEditar(f)} aria-label="Editar">
                 <IconEdit size={16} />
@@ -144,6 +151,7 @@ export default function FuncionariosPage() {
         onPage={setPage}
         onRowClick={(f) => router.push(`/funcionarios/${f.id}`)}
       />
+      <AssociarItensModal funcionario={associar} onClose={() => setAssociar(null)} />
       <FuncionarioModal inicial={editar} onClose={() => setEditar(null)} />
     </Stack>
   );
