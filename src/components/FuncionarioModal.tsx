@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { api, mensagemErro } from '@/lib/api';
+import { cpfValido, mascaraCpf } from '@/lib/cpf';
 import type { Funcionario } from '@/lib/types';
 
 const formSchema = z.object({
@@ -14,6 +15,9 @@ const formSchema = z.object({
   matricula: z.string().trim().min(1, 'Obrigatório').max(40),
   email: z.union([z.literal(''), z.string().trim().email('E-mail inválido')]),
   setor: z.string().max(100),
+  cpf: z.string().refine((v) => v === '' || cpfValido(v), 'CPF inválido'),
+  ramal: z.string().max(20),
+  celular: z.string().max(20),
   ativo: z.boolean(),
 });
 type FormValues = z.infer<typeof formSchema>;
@@ -28,6 +32,9 @@ export function FuncionarioModal({ inicial, onClose }: { inicial: Funcionario | 
       matricula: editando?.matricula ?? '',
       email: editando?.email ?? '',
       setor: editando?.setor ?? '',
+      cpf: mascaraCpf(editando?.cpf),
+      ramal: editando?.ramal ?? '',
+      celular: editando?.celular ?? '',
       ativo: editando?.ativo ?? true,
     },
   });
@@ -50,7 +57,27 @@ export function FuncionarioModal({ inicial, onClose }: { inicial: Funcionario | 
           <TextInput label="Nome" withAsterisk {...register('nome')} error={formState.errors.nome?.message} />
           <TextInput label="Matrícula" withAsterisk {...register('matricula')} error={formState.errors.matricula?.message} />
           <TextInput label="E-mail" {...register('email')} error={formState.errors.email?.message} />
+          <Controller
+            control={control}
+            name="cpf"
+            render={({ field }) => (
+              <TextInput
+                label="CPF"
+                placeholder="000.000.000-00"
+                inputMode="numeric"
+                value={field.value}
+                onChange={(e) => field.onChange(mascaraCpf(e.currentTarget.value))}
+                onBlur={field.onBlur}
+                ref={field.ref}
+                error={formState.errors.cpf?.message}
+              />
+            )}
+          />
           <TextInput label="Setor" {...register('setor')} />
+          <Group grow>
+            <TextInput label="Ramal" {...register('ramal')} error={formState.errors.ramal?.message} />
+            <TextInput label="Celular" {...register('celular')} error={formState.errors.celular?.message} />
+          </Group>
           <Controller control={control} name="ativo" render={({ field }) => <Switch label="Ativo" checked={field.value} onChange={(e) => field.onChange(e.currentTarget.checked)} />} />
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>

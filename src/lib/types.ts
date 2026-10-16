@@ -76,6 +76,9 @@ export type Funcionario = {
   matricula: string;
   email: string | null;
   setor: string | null;
+  cpf: string | null;
+  ramal: string | null;
+  celular: string | null;
   ativo: boolean;
   itens?: number;
 };

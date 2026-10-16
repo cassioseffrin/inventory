@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { api, mensagemErro } from '@/lib/api';
+import { mascaraCpf } from '@/lib/cpf';
 import { STATUS_COLOR, STATUS_LABEL, TIPO_LABEL, type Status, type Tipo } from '@/lib/constants';
 import type { Funcionario } from '@/lib/types';
 import { FuncionarioModal } from '@/components/FuncionarioModal';
@@ -66,6 +67,24 @@ export default function FuncionarioPage() {
               Setor
             </Text>
             <Text size="sm">{f.setor ?? '—'}</Text>
+          </div>
+          <div>
+            <Text size="xs" c="dimmed">
+              CPF
+            </Text>
+            <Text className="mono">{f.cpf ? mascaraCpf(f.cpf) : '—'}</Text>
+          </div>
+          <div>
+            <Text size="xs" c="dimmed">
+              Ramal
+            </Text>
+            <Text size="sm">{f.ramal ?? '—'}</Text>
+          </div>
+          <div>
+            <Text size="xs" c="dimmed">
+              Celular
+            </Text>
+            <Text size="sm">{f.celular ?? '—'}</Text>
           </div>
           <div>
             <Text size="xs" c="dimmed">

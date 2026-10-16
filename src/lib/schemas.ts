@@ -1,5 +1,6 @@
 // Schemas Zod compartilhados: validam formulários no cliente e a entrada da API no servidor.
 import { z } from 'zod';
+import { cpfValido, soDigitos } from './cpf';
 import { CATEGORIAS_SOFTWARE, CLASSIFICACOES, STATUS, TIPOS, TIPOS_CAMPO } from './constants';
 
 const vazioParaNull = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? null : v);
@@ -91,6 +92,12 @@ export const funcionarioSchema = z.object({
   matricula: z.string().trim().min(1, 'Obrigatório').max(40),
   email: z.preprocess(vazioParaNull, z.string().trim().email('E-mail inválido').max(150).nullable().optional()),
   setor: strOpt(100),
+  cpf: z.preprocess(
+    (v) => (typeof v === 'string' ? soDigitos(v) || null : v),
+    z.string().refine(cpfValido, 'CPF inválido').nullable().optional(),
+  ),
+  ramal: strOpt(20),
+  celular: strOpt(20),
   ativo: z.boolean().default(true),
 });
 export type FuncionarioInput = z.infer<typeof funcionarioSchema>;

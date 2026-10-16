@@ -70,7 +70,9 @@ export function erroParaResposta(e: unknown) {
       ? 'Número de patrimônio já cadastrado'
       : err.constraint?.includes('matricula')
         ? 'Matrícula já cadastrada'
-        : 'Registro duplicado';
+        : err.constraint?.includes('cpf')
+          ? 'CPF já cadastrado'
+          : 'Registro duplicado';
     return NextResponse.json({ erro: msg, detalhes: err.detail }, { status: 409 });
   }
   if (err?.code === '23503') {
