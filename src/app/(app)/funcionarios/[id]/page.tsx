@@ -18,6 +18,7 @@ import { FuncionarioModal } from '@/components/FuncionarioModal';
 
 type Ficha = Omit<Funcionario, 'itens'> & {
   createdAt: string;
+  equipe: { id: number; nome: string; matricula: string; setor: string | null; ativo: boolean }[];
   itens: { id: number; numeroPatrimonio: string; hostname: string | null; ip: string | null; tipo: Tipo; status: Status; osName: string | null; localizacao: string | null }[];
 };
 
@@ -97,6 +98,18 @@ export default function FuncionarioPage() {
           </div>
           <div>
             <Text size="xs" c="dimmed">
+              Gerente
+            </Text>
+            {f.gerenteId ? (
+              <Anchor component={Link} href={`/funcionarios/${f.gerenteId}`} size="sm">
+                {f.gerenteNome}
+              </Anchor>
+            ) : (
+              <Text size="sm">—</Text>
+            )}
+          </div>
+          <div>
+            <Text size="xs" c="dimmed">
               CPF
             </Text>
             <Text className="mono">{f.cpf ? mascaraCpf(f.cpf) : '—'}</Text>
@@ -123,6 +136,20 @@ export default function FuncionarioPage() {
           </div>
         </SimpleGrid>
       </Card>
+      {f.equipe.length > 0 && (
+        <Card withBorder>
+          <Title order={5} mb="sm">
+            Equipe ({f.equipe.length})
+          </Title>
+          <Group gap="xs">
+            {f.equipe.map((m) => (
+              <Badge key={m.id} component={Link} href={`/funcionarios/${m.id}`} variant="light" color={m.ativo ? 'blue' : 'gray'} style={{ cursor: 'pointer' }}>
+                {m.nome}
+              </Badge>
+            ))}
+          </Group>
+        </Card>
+      )}
       <Card withBorder>
         <Group justify="space-between" mb="sm">
           <Title order={5}>Itens associados</Title>

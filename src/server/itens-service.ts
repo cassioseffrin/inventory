@@ -139,6 +139,18 @@ export async function patrimonioExiste(numero: string, ignorarId?: number) {
   return r.length > 0;
 }
 
+/** MAC é único entre os itens: devolve o patrimônio do item que já o usa. */
+export async function macEmUso(mac: string | null | undefined, ignorarId?: number) {
+  if (!mac) return null;
+  const [r] = await db()
+    .select({ numeroPatrimonio: itens.numeroPatrimonio })
+    .from(itens)
+    .where(and(eq(itens.mac, mac), ignorarId ? sql`${itens.id} <> ${ignorarId}` : undefined));
+  return r?.numeroPatrimonio ?? null;
+}
+
+const erroMacEmUso = (patrimonio: string) => new HttpError(409, `MAC já cadastrado no item ${patrimonio}`);
+
 // ---------------------------------------------------------------- campos customizados
 
 async function validarCustom(conn: DbOrTx, valores: Record<string, string | null> | undefined, parcial: boolean, itemId?: number) {
@@ -203,6 +215,8 @@ async function garantirFuncionario(conn: DbOrTx, id: number | null | undefined) 
 
 export async function criarItem(input: ItemInput & { confirmarDuplicado?: boolean }, usuario: string) {
   if (await patrimonioExiste(input.numeroPatrimonio)) throw new HttpError(409, 'Número de patrimônio já cadastrado');
+  const donoMac = await macEmUso(normalizarMac(input.mac));
+  if (donoMac) throw erroMacEmUso(donoMac);
 
   if (!input.confirmarDuplicado) {
     const dup = await hostJaInventariado(input);
@@ -251,6 +265,11 @@ export async function atualizarItem(id: number, patch: ItemUpdate, usuario: stri
     if (!atual) throw naoEncontrado('Item');
     if (patch.numeroPatrimonio && patch.numeroPatrimonio !== atual.numeroPatrimonio && (await patrimonioExiste(patch.numeroPatrimonio, id))) {
       throw new HttpError(409, 'Número de patrimônio já cadastrado');
+    }
+    const novoMac = normalizarMac(patch.mac);
+    if (novoMac && novoMac !== atual.mac) {
+      const donoMac = await macEmUso(novoMac, id);
+      if (donoMac) throw erroMacEmUso(donoMac);
     }
     if ('funcionarioId' in patch) await garantirFuncionario(tx, patch.funcionarioId);
 

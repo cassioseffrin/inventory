@@ -13,11 +13,29 @@ import {
 } from '@/db/schema';
 import type { CampoCustomInput, FuncionarioInput } from '@/lib/schemas';
 import { registrar } from './historico';
-import { naoEncontrado, type Pagina } from './http';
+import { HttpError, naoEncontrado, type Pagina } from './http';
 import { reclassificarSoftwares } from './dicionario-service';
 import { ipSemMascara, normalizarMac } from './util';
 
 // ---------------------------------------------------------------- funcionários
+
+const gerenteNome = sql<string | null>`(SELECT g.nome FROM inventario.funcionarios g WHERE g.id = ${funcionarios.gerenteId})`;
+
+/** O gerente precisa existir e não pode ser o próprio funcionário nem alguém da equipe dele (ciclo). */
+async function validarGerente(id: number | null, gerenteId: number | null | undefined) {
+  if (!gerenteId) return;
+  if (gerenteId === id) throw new HttpError(400, 'O funcionário não pode ser gerente de si mesmo');
+  const r = await db().execute<{ id: number; ciclo: boolean }>(sql`
+    WITH RECURSIVE cadeia AS (
+      SELECT id, gerente_id, 1 AS nivel FROM inventario.funcionarios WHERE id = ${gerenteId}
+      UNION ALL
+      SELECT f.id, f.gerente_id, c.nivel + 1 FROM inventario.funcionarios f JOIN cadeia c ON f.id = c.gerente_id
+      WHERE c.nivel < 50
+    )
+    SELECT id, (id = ${id ?? 0}) AS ciclo FROM cadeia`);
+  if (!r.rows.length) throw new HttpError(400, 'Gerente não encontrado');
+  if (r.rows.some((x) => x.ciclo)) throw new HttpError(400, 'Gerente inválido: ele já está abaixo deste funcionário na hierarquia');
+}
 
 export async function listarFuncionarios(f: { q?: string; ativo?: boolean; setor?: string; page: number; pageSize: number }): Promise<Pagina<typeof funcionarios.$inferSelect & { itens: number }>> {
   const like = f.q ? `%${f.q.replace(/[\\%_]/g, (c) => '\\' + c)}%` : null;
@@ -30,6 +48,7 @@ export async function listarFuncionarios(f: { q?: string; ativo?: boolean; setor
     db()
       .select({
         ...getTableColumns(funcionarios),
+        gerenteNome,
         itens: sql<number>`(SELECT count(*)::int FROM inventario.itens i WHERE i.funcionario_id = ${funcionarios.id})`,
       })
       .from(funcionarios)
@@ -54,8 +73,16 @@ export async function opcoesFuncionarios(q?: string) {
 }
 
 export async function obterFuncionario(id: number) {
-  const [f] = await db().select().from(funcionarios).where(eq(funcionarios.id, id));
+  const [f] = await db()
+    .select({ ...getTableColumns(funcionarios), gerenteNome })
+    .from(funcionarios)
+    .where(eq(funcionarios.id, id));
   if (!f) throw naoEncontrado('Funcionário');
+  const equipe = await db()
+    .select({ id: funcionarios.id, nome: funcionarios.nome, matricula: funcionarios.matricula, setor: funcionarios.setor, ativo: funcionarios.ativo })
+    .from(funcionarios)
+    .where(eq(funcionarios.gerenteId, id))
+    .orderBy(asc(funcionarios.nome));
   const seusItens = await db()
     .select({
       id: itens.id,
@@ -70,7 +97,7 @@ export async function obterFuncionario(id: number) {
     .from(itens)
     .where(eq(itens.funcionarioId, id))
     .orderBy(asc(itens.numeroPatrimonio));
-  return { ...f, itens: seusItens };
+  return { ...f, itens: seusItens, equipe };
 }
 
 /**
@@ -103,11 +130,13 @@ export async function associarItensFuncionario(id: number, d: { adicionar: numbe
 }
 
 export async function criarFuncionario(d: FuncionarioInput) {
+  await validarGerente(null, d.gerenteId);
   const [f] = await db().insert(funcionarios).values(d).returning();
   return f;
 }
 
 export async function atualizarFuncionario(id: number, d: Partial<FuncionarioInput>) {
+  await validarGerente(id, d.gerenteId);
   const [f] = await db().update(funcionarios).set({ ...d, updatedAt: new Date() }).where(eq(funcionarios.id, id)).returning();
   if (!f) throw naoEncontrado('Funcionário');
   return f;

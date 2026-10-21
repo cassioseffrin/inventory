@@ -14,6 +14,8 @@ import {
   primaryKey,
   index,
   uniqueIndex,
+  check,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -90,10 +92,16 @@ export const funcionarios = inv.table(
     cpf: varchar('cpf', { length: 11 }).unique(),
     ramal: varchar('ramal', { length: 20 }),
     celular: varchar('celular', { length: 20 }),
+    /** Gestor imediato (outro funcionário). */
+    gerenteId: integer('gerente_id').references((): AnyPgColumn => funcionarios.id, { onDelete: 'set null' }),
     ativo: boolean('ativo').notNull().default(true),
     ...timestamps,
   },
-  (t) => [index('funcionarios_nome_idx').on(t.nome)],
+  (t) => [
+    index('funcionarios_nome_idx').on(t.nome),
+    index('funcionarios_gerente_idx').on(t.gerenteId),
+    check('funcionarios_gerente_proprio_ck', sql`${t.gerenteId} <> ${t.id}`),
+  ],
 );
 
 // ---------------------------------------------------------------- itens
@@ -137,7 +145,7 @@ export const itens = inv.table(
     ...timestamps,
   },
   (t) => [
-    index('itens_mac_idx').on(t.mac),
+    uniqueIndex('itens_mac_uq').on(t.mac),
     index('itens_ip_idx').on(t.ip),
     index('itens_hostname_idx').on(sql`lower(${t.hostname})`),
     index('itens_serie_idx').on(t.numeroSerie),

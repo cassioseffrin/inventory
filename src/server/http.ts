@@ -72,8 +72,13 @@ export function erroParaResposta(e: unknown) {
         ? 'Matrícula já cadastrada'
         : err.constraint?.includes('cpf')
           ? 'CPF já cadastrado'
-          : 'Registro duplicado';
+          : err.constraint?.includes('mac')
+            ? 'MAC já cadastrado em outro item'
+            : 'Registro duplicado';
     return NextResponse.json({ erro: msg, detalhes: err.detail }, { status: 409 });
+  }
+  if (err?.code === '23514' && err.constraint?.includes('gerente')) {
+    return NextResponse.json({ erro: 'O funcionário não pode ser gerente de si mesmo' }, { status: 400 });
   }
   if (err?.code === '23503') {
     return NextResponse.json({ erro: 'Registro referenciado por outro', detalhes: err.detail }, { status: 409 });

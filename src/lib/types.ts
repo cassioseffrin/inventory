@@ -79,6 +79,9 @@ export type Funcionario = {
   cpf: string | null;
   ramal: string | null;
   celular: string | null;
+  gerenteId: number | null;
+  /** nome do gerente (listagem/detalhe) */
+  gerenteNome?: string | null;
   ativo: boolean;
   itens?: number;
 };

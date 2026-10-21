@@ -10,6 +10,7 @@ import { api, mensagemErro } from '@/lib/api';
 import { cpfValido, mascaraCpf } from '@/lib/cpf';
 import { mascaraTelefone, telefoneValido } from '@/lib/telefone';
 import type { Funcionario } from '@/lib/types';
+import { FuncionarioSelect } from './FuncionarioSelect';
 
 const formSchema = z.object({
   nome: z.string().trim().min(2, 'Informe o nome').max(150),
@@ -19,6 +20,7 @@ const formSchema = z.object({
   cpf: z.string().refine((v) => v === '' || cpfValido(v), 'CPF inválido'),
   ramal: z.string().max(20),
   celular: z.string().refine((v) => v === '' || telefoneValido(v), 'Celular inválido'),
+  gerenteId: z.number().nullable(),
   ativo: z.boolean(),
 });
 type FormValues = z.infer<typeof formSchema>;
@@ -36,6 +38,7 @@ export function FuncionarioModal({ inicial, onClose }: { inicial: Funcionario | 
       cpf: mascaraCpf(editando?.cpf),
       ramal: editando?.ramal ?? '',
       celular: mascaraTelefone(editando?.celular),
+      gerenteId: editando?.gerenteId ?? null,
       ativo: editando?.ativo ?? true,
     },
   });
@@ -75,6 +78,20 @@ export function FuncionarioModal({ inicial, onClose }: { inicial: Funcionario | 
             )}
           />
           <TextInput label="Setor" {...register('setor')} />
+          <Controller
+            control={control}
+            name="gerenteId"
+            render={({ field }) => (
+              <FuncionarioSelect
+                label="Gerente"
+                value={field.value}
+                onChange={(id) => field.onChange(id)}
+                nomeAtual={editando?.gerenteNome}
+                excluirId={editando?.id}
+                comboboxProps={{ withinPortal: true }}
+              />
+            )}
+          />
           <Group grow>
             <TextInput label="Ramal" {...register('ramal')} error={formState.errors.ramal?.message} />
             <Controller

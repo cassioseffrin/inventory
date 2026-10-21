@@ -46,6 +46,18 @@ export default function FuncionariosPage() {
       { id: 'matricula', header: 'Matrícula', cell: ({ row }) => <span className="mono">{row.original.matricula}</span> },
       { id: 'email', header: 'E-mail', cell: ({ row }) => row.original.email ?? '—' },
       { id: 'setor', header: 'Setor', cell: ({ row }) => row.original.setor ?? '—' },
+      {
+        id: 'gerente',
+        header: 'Gerente',
+        cell: ({ row }) =>
+          row.original.gerenteId ? (
+            <Anchor component={Link} href={`/funcionarios/${row.original.gerenteId}`} size="sm" onClick={(e) => e.stopPropagation()}>
+              {row.original.gerenteNome}
+            </Anchor>
+          ) : (
+            '—'
+          ),
+      },
       { id: 'itens', header: 'Itens', cell: ({ row }) => row.original.itens },
       {
         id: 'ativo',

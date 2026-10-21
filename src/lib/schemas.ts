@@ -102,6 +102,7 @@ export const funcionarioSchema = z.object({
     (v) => (typeof v === 'string' ? soDigitos(v).replace(/^0+/, '') || null : v),
     z.string().refine(telefoneValido, 'Celular inválido').nullable().optional(),
   ),
+  gerenteId: z.preprocess((v) => (v === '' ? null : v), z.coerce.number().int().positive().nullable().optional()),
   ativo: z.boolean().default(true),
 });
 export type FuncionarioInput = z.infer<typeof funcionarioSchema>;

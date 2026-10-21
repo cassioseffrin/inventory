@@ -13,12 +13,14 @@ type Props = Omit<SelectProps, 'data' | 'value' | 'onChange'> & {
   onChange: (id: number | null, f?: Opcao) => void;
   /** nome atual (para exibir antes de a busca carregar) */
   nomeAtual?: string | null;
+  /** funcionário que não pode ser escolhido (ex.: ele mesmo, ao escolher o gerente) */
+  excluirId?: number | null;
 };
 
 const rotulo = (f: Opcao) => `${f.nome} — ${f.matricula}${f.setor ? ` (${f.setor})` : ''}${f.ativo ? '' : ' [inativo]'}`;
 
 /** Select com busca no servidor (nome ou matrícula). */
-export function FuncionarioSelect({ value, onChange, nomeAtual, ...rest }: Props) {
+export function FuncionarioSelect({ value, onChange, nomeAtual, excluirId, ...rest }: Props) {
   const [busca, setBusca] = useState('');
   const [selLabel, setSelLabel] = useState<string | null>(null);
   const [debounced] = useDebouncedValue(busca, 250);
@@ -30,12 +32,12 @@ export function FuncionarioSelect({ value, onChange, nomeAtual, ...rest }: Props
   });
 
   const opcoes = useMemo(() => {
-    const list = data.map((f) => ({ value: String(f.id), label: rotulo(f) }));
+    const list = data.filter((f) => f.id !== excluirId).map((f) => ({ value: String(f.id), label: rotulo(f) }));
     if (value && !list.some((o) => o.value === String(value))) {
       list.unshift({ value: String(value), label: selLabel ?? nomeAtual ?? `#${value}` });
     }
     return list;
-  }, [data, value, nomeAtual, selLabel]);
+  }, [data, value, nomeAtual, selLabel, excluirId]);
 
   return (
     <Select
