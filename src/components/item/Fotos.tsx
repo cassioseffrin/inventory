@@ -13,32 +13,38 @@ import type { ItemFoto } from '@/lib/types';
 
 /** Lado máximo gravado no banco (a imagem não precisa ser quadrada). */
 const MAX_LADO = 1024;
+/** Miniatura usada na grade de fotos e nas listas de itens. */
+const MINIATURA_LADO = 256;
 const QUALIDADE_JPEG = 0.85;
 
 /**
- * Reduz proporcionalmente para caber em MAX_LADO x MAX_LADO e converte para JPEG.
- * O <img> já aplica a orientação EXIF, então fotos do celular saem na posição certa.
+ * Reduz proporcionalmente para caber em MAX_LADO x MAX_LADO (e MINIATURA_LADO para a miniatura)
+ * e converte para JPEG. O <img> já aplica a orientação EXIF, então fotos do celular saem na posição certa.
  */
-async function reduzirImagem(arquivo: File): Promise<string> {
+async function reduzirImagem(arquivo: File): Promise<{ dados: string; miniatura: string }> {
   const url = URL.createObjectURL(arquivo);
   try {
     const img = new window.Image();
     img.src = url;
     await img.decode();
-    const escala = Math.min(1, MAX_LADO / img.naturalWidth, MAX_LADO / img.naturalHeight);
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(img.naturalWidth * escala));
-    canvas.height = Math.max(1, Math.round(img.naturalHeight * escala));
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Navegador sem suporte a canvas');
-    ctx.fillStyle = '#fff'; // PNG com transparência não fica preto no JPEG
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', QUALIDADE_JPEG);
+    return { dados: desenharJpeg(img, MAX_LADO), miniatura: desenharJpeg(img, MINIATURA_LADO) };
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+function desenharJpeg(img: HTMLImageElement, maxLado: number): string {
+  const escala = Math.min(1, maxLado / img.naturalWidth, maxLado / img.naturalHeight);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * escala));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * escala));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Navegador sem suporte a canvas');
+  ctx.fillStyle = '#fff'; // PNG com transparência não fica preto no JPEG
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', QUALIDADE_JPEG);
 }
 
 const fmtTamanho = (b: number) => (b >= 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.round(b / 1024)} KB`);
@@ -65,7 +71,7 @@ export function AbaFotos({ itemId }: { itemId: number }) {
     // uma por vez: mantém o corpo da requisição pequeno e não estoura memória do celular
     for (const [i, arquivo] of arquivos.entries()) {
       try {
-        await api(`/api/itens/${itemId}/fotos`, { method: 'POST', json: { dados: await reduzirImagem(arquivo) } });
+        await api(`/api/itens/${itemId}/fotos`, { method: 'POST', json: await reduzirImagem(arquivo) });
       } catch (err) {
         falhas++;
         notifications.show({ color: 'red', title: arquivo.name, message: mensagemErro(err) });

@@ -210,7 +210,7 @@ export default function FuncionarioPage() {
                   <Table.Td>
                     {i.fotoId && (
                       <Anchor component={Link} href={`/inventario/${i.id}`} display="block" w={40}>
-                        <Image src={`/api/itens/${i.id}/fotos/${i.fotoId}`} alt={`Foto de ${i.numeroPatrimonio}`} loading="lazy" w={40} h={40} radius="sm" fit="cover" />
+                        <Image src={`/api/itens/${i.id}/fotos/${i.fotoId}?thumb=1`} alt={`Foto de ${i.numeroPatrimonio}`} loading="lazy" w={40} h={40} radius="sm" fit="cover" />
                       </Anchor>
                     )}
                   </Table.Td>

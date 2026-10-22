@@ -261,6 +261,8 @@ export const itensInterfaces = inv.table(
 /**
  * Fotos do item (cadeira, suporte, etiqueta...). JPEG em base64 (sem o prefixo data:),
  * já reduzido no navegador para no máximo 1024x1024 mantendo a proporção.
+ * `miniatura` é a mesma imagem com no máximo 256x256, usada em grades e listas
+ * (null em fotos antigas até rodar `npm run db:miniaturas`).
  */
 export const itensFotos = inv.table(
   'itens_fotos',
@@ -271,6 +273,7 @@ export const itensFotos = inv.table(
       .references(() => itens.id, { onDelete: 'cascade' }),
     mime: varchar('mime', { length: 30 }).notNull().default('image/jpeg'),
     dados: text('dados').notNull(),
+    miniatura: text('miniatura'),
     largura: integer('largura').notNull(),
     altura: integer('altura').notNull(),
     tamanhoBytes: integer('tamanho_bytes').notNull(),

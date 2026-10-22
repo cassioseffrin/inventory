@@ -96,8 +96,9 @@ export async function obterFuncionario(id: number) {
       status: itens.status,
       osName: itens.osName,
       localizacao: itens.localizacao,
-      // foto mais recente, a mesma que abre a galeria do item
-      fotoId: sql<number | null>`(select f.id from ${itensFotos} f where f.item_id = ${itens.id} order by f.created_at desc, f.id desc limit 1)`,
+      // foto mais recente, a mesma que abre a galeria do item; `${itens}.id` qualificado porque
+      // o drizzle escreve `${itens.id}` como "id", que dentro da subquery seria resolvido como f.id
+      fotoId: sql<number | null>`(select f.id from ${itensFotos} f where f.item_id = ${itens}.id order by f.created_at desc, f.id desc limit 1)`,
     })
     .from(itens)
     .where(eq(itens.funcionarioId, id))
@@ -261,6 +262,7 @@ export async function adicionarSoftware(itemId: number, d: { nome: string; versa
 
 // ---------------------------------------------------------------- fotos do item
 const FOTO_MAX_LADO = 1024;
+const MINIATURA_MAX_LADO = 256;
 
 /** Lê largura/altura do marcador SOF de um JPEG (null se não for um JPEG válido). */
 function dimensoesJpeg(b: Buffer): { largura: number; altura: number } | null {
@@ -280,30 +282,38 @@ function dimensoesJpeg(b: Buffer): { largura: number; altura: number } | null {
 
 export async function listarFotos(itemId: number) {
   await itemRef(itemId);
-  const { dados: _, ...colunas } = getTableColumns(itensFotos);
+  const { dados: _, miniatura: __, ...colunas } = getTableColumns(itensFotos);
   return db().select(colunas).from(itensFotos).where(eq(itensFotos.itemId, itemId)).orderBy(desc(itensFotos.createdAt), desc(itensFotos.id));
 }
 
-export async function obterFoto(itemId: number, fotoId: number) {
+/** Com `miniatura`, devolve a versão reduzida (ou a original, se a foto ainda não tiver miniatura). */
+export async function obterFoto(itemId: number, fotoId: number, miniatura = false) {
   const [f] = await db()
-    .select({ mime: itensFotos.mime, dados: itensFotos.dados })
+    .select({ mime: itensFotos.mime, dados: miniatura ? sql<string>`coalesce(${itensFotos.miniatura}, ${itensFotos.dados})` : itensFotos.dados })
     .from(itensFotos)
     .where(and(eq(itensFotos.id, fotoId), eq(itensFotos.itemId, itemId)));
   if (!f) throw naoEncontrado('Foto');
   return f;
 }
 
-export async function adicionarFoto(itemId: number, dataUrl: string, usuario: string) {
-  const ref = await itemRef(itemId);
+/** Decodifica um data URL JPEG e confere se cabe em `maxLado` x `maxLado`. */
+function jpegValidado(dataUrl: string, maxLado: number, nome: string) {
   const dados = dataUrl.slice(dataUrl.indexOf(',') + 1);
   const bin = Buffer.from(dados, 'base64');
   const dim = dimensoesJpeg(bin);
-  if (!dim) throw new HttpError(400, 'Imagem JPEG inválida');
-  if (dim.largura > FOTO_MAX_LADO || dim.altura > FOTO_MAX_LADO)
-    throw new HttpError(400, `Imagem excede ${FOTO_MAX_LADO}x${FOTO_MAX_LADO} (${dim.largura}x${dim.altura})`);
+  if (!dim) throw new HttpError(400, `${nome} JPEG inválida`);
+  if (dim.largura > maxLado || dim.altura > maxLado)
+    throw new HttpError(400, `${nome} excede ${maxLado}x${maxLado} (${dim.largura}x${dim.altura})`);
+  return { dados, dim, tamanhoBytes: bin.length };
+}
+
+export async function adicionarFoto(itemId: number, d: { dados: string; miniatura: string }, usuario: string) {
+  const ref = await itemRef(itemId);
+  const { dados, dim, tamanhoBytes } = jpegValidado(d.dados, FOTO_MAX_LADO, 'Imagem');
+  const miniatura = jpegValidado(d.miniatura, MINIATURA_MAX_LADO, 'Miniatura').dados;
   const [foto] = await db()
     .insert(itensFotos)
-    .values({ itemId, mime: 'image/jpeg', dados, ...dim, tamanhoBytes: bin.length, usuario })
+    .values({ itemId, mime: 'image/jpeg', dados, miniatura, ...dim, tamanhoBytes, usuario })
     .returning({ id: itensFotos.id, createdAt: itensFotos.createdAt });
   await registrar(db(), ref, 'alteracao', usuario, [{ campo: 'foto', antigo: null, novo: `#${foto.id} (${dim.largura}x${dim.altura})` }]);
   return foto;

@@ -164,12 +164,12 @@ export const softwareSchema = z.object({
   dataInstalacao: strOpt(30),
 });
 
-/** Foto já reduzida no navegador: data URL JPEG (máx. 1024x1024). */
+const JPEG_DATA_URL = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/;
+
+/** Foto já reduzida no navegador: data URL JPEG (máx. 1024x1024) e miniatura (máx. 256x256). */
 export const fotoSchema = z.object({
-  dados: z
-    .string()
-    .regex(/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/, 'Imagem deve ser JPEG em base64')
-    .max(3_000_000, 'Imagem muito grande'),
+  dados: z.string().regex(JPEG_DATA_URL, 'Imagem deve ser JPEG em base64').max(3_000_000, 'Imagem muito grande'),
+  miniatura: z.string().regex(JPEG_DATA_URL, 'Miniatura deve ser JPEG em base64').max(200_000, 'Miniatura muito grande'),
 });
 
 /** Custo e depreciação do item; valores em reais. Regras em `src/lib/depreciacao.ts`. */

@@ -8,5 +8,5 @@ type P = { id: string };
 export const GET = rota<P>(async ({ params }) => listarFotos(idParam(params.id)));
 
 export const POST = rota<P>(async ({ req, params, sessao }) =>
-  adicionarFoto(idParam(params.id), (await corpo(req, fotoSchema)).dados, sessao.username),
+  adicionarFoto(idParam(params.id), await corpo(req, fotoSchema), sessao.username),
 );

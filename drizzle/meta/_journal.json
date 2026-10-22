@@ -57,6 +57,13 @@
       "when": 1792670017244,
       "tag": "0007_itens_custos",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792673025886,
+      "tag": "0008_fotos_miniatura",
+      "breakpoints": true
     }
   ]
 }

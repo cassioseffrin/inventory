@@ -1,0 +1,1 @@
+ALTER TABLE "inventario"."itens_fotos" ADD COLUMN "miniatura" text;
