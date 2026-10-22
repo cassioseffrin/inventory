@@ -53,6 +53,7 @@ export function ClonarModal({ hosts, onClose }: { hosts: Host[]; onClose: () => 
       opened={!!h}
       onClose={onClose}
       size="xl"
+      closeOnClickOutside={false}
       title={
         <Group gap="xs">
           <Text fw={600}>Adicionar ao inventário</Text>

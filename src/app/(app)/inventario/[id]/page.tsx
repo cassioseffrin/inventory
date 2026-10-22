@@ -230,7 +230,7 @@ export default function ItemPage() {
         </Tabs.Panel>
       </Tabs>
 
-      <Modal opened={editando} onClose={() => setEditando(false)} size="xl" fullScreen={mobile} title={`Editar ${item.numeroPatrimonio}`}>
+      <Modal opened={editando} onClose={() => setEditando(false)} size="xl" closeOnClickOutside={false} fullScreen={mobile} title={`Editar ${item.numeroPatrimonio}`}>
         <ItemForm
           inicial={itemParaForm(item)}
           itemId={id}

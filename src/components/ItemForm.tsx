@@ -59,7 +59,7 @@ const formSchema = z.object({
   fornecedor: z.string().max(150),
   observacoes: z.string().max(5000),
   descricao: z.string().max(1000),
-  camposCustomizados: z.record(z.string(), z.string().nullable()),
+  camposCustomizados: z.record(z.string(), z.string().nullish()),
 });
 export type ItemFormValues = z.infer<typeof formSchema>;
 
@@ -163,7 +163,7 @@ export function ItemForm({ inicial, itemId, funcionarioNome, origemMsf, submitLa
     } catch (e) {
       notifications.show({ color: 'red', title: 'Não foi possível salvar', message: mensagemErro(e) });
     }
-  });
+  }, () => notifications.show({ color: 'red', message: 'Corrija os campos destacados antes de salvar' }));
 
   const hostDuplicado = verif?.host && verif.host.id !== itemId ? verif.host : null;
 
@@ -294,8 +294,8 @@ export function ItemForm({ inicial, itemId, funcionarioNome, origemMsf, submitLa
                   key={c.id}
                   control={control}
                   name={`camposCustomizados.${c.id}`}
-                  render={({ field }) => {
-                    const comum = { label: c.nome, withAsterisk: c.obrigatorio };
+                  render={({ field, fieldState }) => {
+                    const comum = { label: c.nome, withAsterisk: c.obrigatorio, error: fieldState.error?.message };
                     if (c.tipo === 'lista')
                       return <Select {...comum} clearable data={c.opcoes ?? []} value={field.value ?? null} onChange={(v) => field.onChange(v)} />;
                     if (c.tipo === 'numero')

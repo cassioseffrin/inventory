@@ -339,6 +339,7 @@ function Inventario() {
         opened={!!editar}
         onClose={() => setEditar(null)}
         size="xl"
+        closeOnClickOutside={false}
         title={editar === 'novo' ? 'Novo item' : editar ? `Editar ${editar.numeroPatrimonio}` : ''}
       >
         {editar && (
