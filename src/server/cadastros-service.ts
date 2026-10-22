@@ -96,6 +96,8 @@ export async function obterFuncionario(id: number) {
       status: itens.status,
       osName: itens.osName,
       localizacao: itens.localizacao,
+      // foto mais recente, a mesma que abre a galeria do item
+      fotoId: sql<number | null>`(select f.id from ${itensFotos} f where f.item_id = ${itens.id} order by f.created_at desc, f.id desc limit 1)`,
     })
     .from(itens)
     .where(eq(itens.funcionarioId, id))

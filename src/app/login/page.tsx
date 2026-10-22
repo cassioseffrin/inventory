@@ -2,13 +2,14 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Alert, Button, Center, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
-import { IconLock, IconServer2 } from '@tabler/icons-react';
+import { IconLock } from '@tabler/icons-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 import { api, mensagemErro } from '@/lib/api';
 import { loginSchema } from '@/lib/schemas';
+import logo from './logo-arpa.svg';
 
 function LoginForm() {
   const router = useRouter();
@@ -34,7 +35,7 @@ function LoginForm() {
         <form onSubmit={onSubmit}>
           <Stack>
             <Stack gap={4} align="center">
-              <IconServer2 size={36} stroke={1.5} />
+              <img src={logo.src} alt="ARPA Sistemas" width={220} style={{ maxWidth: '100%', height: 'auto' }} />
               <Title order={3}>Inventário de TI</Title>
               <Text size="sm" c="dimmed">
                 Acesso restrito

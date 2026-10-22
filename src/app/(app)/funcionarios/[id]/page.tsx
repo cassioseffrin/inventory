@@ -1,6 +1,6 @@
 'use client';
 
-import { ActionIcon, Alert, Anchor, Badge, Button, Card, Center, Checkbox, Group, Loader, SimpleGrid, Stack, Table, Text, Title, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Badge, Button, Card, Center, Checkbox, Group, Image, Loader, SimpleGrid, Stack, Table, Text, Title, Tooltip } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { IconArrowLeft, IconEdit, IconLinkOff, IconPlus } from '@tabler/icons-react';
@@ -19,7 +19,7 @@ import { FuncionarioModal } from '@/components/FuncionarioModal';
 type Ficha = Omit<Funcionario, 'itens'> & {
   createdAt: string;
   equipe: { id: number; nome: string; matricula: string; setor: string | null; ativo: boolean }[];
-  itens: { id: number; numeroPatrimonio: string; descricao: string | null; hostname: string | null; ip: string | null; tipo: Tipo; status: Status; osName: string | null; localizacao: string | null }[];
+  itens: { id: number; numeroPatrimonio: string; descricao: string | null; hostname: string | null; ip: string | null; tipo: Tipo; status: Status; osName: string | null; localizacao: string | null; fotoId: number | null }[];
 };
 
 export default function FuncionarioPage() {
@@ -177,6 +177,7 @@ export default function FuncionarioPage() {
                     onChange={(e) => setMarcados(e.currentTarget.checked ? new Set(f.itens.map((i) => i.id)) : new Set())}
                   />
                 </Table.Th>
+                <Table.Th w={56} />
                 <Table.Th>Patrimônio</Table.Th>
                 <Table.Th>Descrição</Table.Th>
                 <Table.Th>Tipo</Table.Th>
@@ -205,6 +206,13 @@ export default function FuncionarioPage() {
                         })
                       }
                     />
+                  </Table.Td>
+                  <Table.Td>
+                    {i.fotoId && (
+                      <Anchor component={Link} href={`/inventario/${i.id}`} display="block" w={40}>
+                        <Image src={`/api/itens/${i.id}/fotos/${i.fotoId}`} alt={`Foto de ${i.numeroPatrimonio}`} loading="lazy" w={40} h={40} radius="sm" fit="cover" />
+                      </Anchor>
+                    )}
                   </Table.Td>
                   <Table.Td>
                     <Anchor component={Link} href={`/inventario/${i.id}`} size="sm" fw={600}>
