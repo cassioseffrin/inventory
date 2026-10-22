@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, Anchor, Badge, Button, Card, Center, Group, Loader, Modal, SimpleGrid, Stack, Tabs, Text, Title } from '@mantine/core';
+import { Alert, Anchor, Badge, Button, Card, Center, Group, Image, Loader, Modal, SimpleGrid, Stack, Tabs, Text, Title, UnstyledButton } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
@@ -81,6 +81,11 @@ export default function ItemPage() {
       </Anchor>
       <Group justify="space-between">
         <Group gap="xs">
+          {fotos?.[0] && (
+            <UnstyledButton onClick={() => setAba('fotos')} aria-label="Ver fotos">
+              <Image src={`/api/itens/${id}/fotos/${fotos[0].id}?thumb=1`} alt={`Foto de ${item.numeroPatrimonio}`} w={48} h={48} radius="sm" fit="cover" />
+            </UnstyledButton>
+          )}
           <Title order={3}>{item.numeroPatrimonio}</Title>
           {item.patrimonioProvisorio && (
             <Badge color="orange" variant="light">
