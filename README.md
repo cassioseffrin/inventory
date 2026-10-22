@@ -3,6 +3,23 @@ node scripts/migrate.mjs
 migrations aplicadas.
 
 
+# 1. uma vez só: ambiente Python com as dependências (.venv já está no .gitignore)
+python3 -m venv .venv
+.venv/bin/pip install -r scripts/merge_planilha/requirements.txt
+
+# 2. se for um banco novo, criar as colunas antes (gerente, MAC único, descrição)
+yarn db:migrate
+
+# 3. simular: mostra o que faria e desfaz tudo no final
+.venv/bin/python scripts/merge_planilha/merge_colaboradores.py data_merge/inventory17.10.26.xlsx
+.venv/bin/python scripts/merge_planilha/merge_patrimonial.py  data_merge/patrimonio-nesi.xlsx
+
+# 4. gravar de verdade
+.venv/bin/python scripts/merge_planilha/merge_colaboradores.py data_merge/inventory17.10.26.xlsx --aplicar
+.venv/bin/python scripts/merge_planilha/merge_patrimonial.py  data_merge/patrimonio-nesi.xlsx --aplicar
+
+
+
 # Inventário de TI (fonte: Metasploit)
 
 Sistema web de inventário de ativos de TI. Ele usa como fonte os hosts que o **Metasploit Framework** descobre nos scans (`db_nmap`) feitos no Kali Linux. Os hosts são lidos do banco do msf **somente em modo leitura** e copiados (snapshot) para um banco próprio, `inventario`, onde ganham dados administrativos: patrimônio, responsável, setor, hardware, software, grupos e histórico.
