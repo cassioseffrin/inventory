@@ -9,7 +9,7 @@ import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 import { api, mensagemErro } from '@/lib/api';
 import { loginSchema } from '@/lib/schemas';
-import logo from './logo-arpa.svg';
+import { LogoArpa } from './LogoArpa';
 
 function LoginForm() {
   const router = useRouter();
@@ -35,7 +35,7 @@ function LoginForm() {
         <form onSubmit={onSubmit}>
           <Stack>
             <Stack gap={4} align="center">
-              <img src={logo.src} alt="ARPA Sistemas" width={220} style={{ maxWidth: '100%', height: 'auto' }} />
+              <LogoArpa width={220} style={{ maxWidth: '100%', height: 'auto', color: 'var(--mantine-color-text)' }} />
               <Title order={3}>Inventário de TI</Title>
               <Text size="sm" c="dimmed">
                 Acesso restrito
