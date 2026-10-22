@@ -19,7 +19,7 @@ import { FuncionarioModal } from '@/components/FuncionarioModal';
 type Ficha = Omit<Funcionario, 'itens'> & {
   createdAt: string;
   equipe: { id: number; nome: string; matricula: string; setor: string | null; ativo: boolean }[];
-  itens: { id: number; numeroPatrimonio: string; hostname: string | null; ip: string | null; tipo: Tipo; status: Status; osName: string | null; localizacao: string | null }[];
+  itens: { id: number; numeroPatrimonio: string; descricao: string | null; hostname: string | null; ip: string | null; tipo: Tipo; status: Status; osName: string | null; localizacao: string | null }[];
 };
 
 export default function FuncionarioPage() {
@@ -178,6 +178,7 @@ export default function FuncionarioPage() {
                   />
                 </Table.Th>
                 <Table.Th>Patrimônio</Table.Th>
+                <Table.Th>Descrição</Table.Th>
                 <Table.Th>Tipo</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Hostname</Table.Th>
@@ -210,6 +211,7 @@ export default function FuncionarioPage() {
                       {i.numeroPatrimonio}
                     </Anchor>
                   </Table.Td>
+                  <Table.Td>{i.descricao ?? '—'}</Table.Td>
                   <Table.Td>{TIPO_LABEL[i.tipo]}</Table.Td>
                   <Table.Td>
                     <Badge size="sm" variant="light" color={STATUS_COLOR[i.status]}>

@@ -89,6 +89,7 @@ export async function obterFuncionario(id: number) {
     .select({
       id: itens.id,
       numeroPatrimonio: itens.numeroPatrimonio,
+      descricao: itens.descricao,
       hostname: itens.hostname,
       ip: sql<string | null>`host(${itens.ip})`,
       tipo: itens.tipo,
