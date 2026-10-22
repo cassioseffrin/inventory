@@ -4,12 +4,13 @@ import { Alert, Anchor, Badge, Button, Card, Center, Group, Loader, Modal, Simpl
 import { useMediaQuery } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconCamera, IconEdit, IconRefresh, IconTrash } from '@tabler/icons-react';
+import { IconArrowLeft, IconCamera, IconCoin, IconEdit, IconRefresh, IconTrash } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { ItemForm, itemParaForm } from '@/components/ItemForm';
+import { AbaCusto } from '@/components/item/Custo';
 import { AbaFotos } from '@/components/item/Fotos';
 import { AbaHardware, AbaHistorico, AbaRede, AbaServicos, AbaSoftware } from '@/components/item/Secoes';
 import { SyncModal } from '@/components/item/SyncModal';
@@ -122,6 +123,9 @@ export default function ItemPage() {
           <Tabs.Tab value="fotos" leftSection={<IconCamera size={14} />}>
             Fotos{fotos?.length ? ` (${fotos.length})` : ''}
           </Tabs.Tab>
+          <Tabs.Tab value="custo" leftSection={<IconCoin size={14} />}>
+            Custo e depreciação
+          </Tabs.Tab>
           <Tabs.Tab value="hardware">Hardware</Tabs.Tab>
           <Tabs.Tab value="rede">Rede</Tabs.Tab>
           <Tabs.Tab value="software">Software</Tabs.Tab>
@@ -205,6 +209,9 @@ export default function ItemPage() {
         </Tabs.Panel>
         <Tabs.Panel value="fotos" pt="md">
           <AbaFotos itemId={id} />
+        </Tabs.Panel>
+        <Tabs.Panel value="custo" pt="md">
+          <AbaCusto itemId={id} tipo={item.tipo} status={item.status} dataAquisicao={item.dataAquisicao} />
         </Tabs.Panel>
         <Tabs.Panel value="hardware" pt="md">
           <AbaHardware itemId={id} />

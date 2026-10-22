@@ -1,0 +1,2044 @@
+{
+  "id": "a018a9f9-6322-409e-a87e-8721b15c4ab1",
+  "prevId": "42eb1a08-5eeb-4990-b070-c659994ff7b0",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "inventario.campos_customizados": {
+      "name": "campos_customizados",
+      "schema": "inventario",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "chave": {
+          "name": "chave",
+          "type": "varchar(60)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "tipo_campo",
+          "typeSchema": "inventario",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'texto'"
+        },
+        "opcoes": {
+          "name": "opcoes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obrigatorio": {
+          "name": "obrigatorio",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ativo": {
+          "name": "ativo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "ordem": {
+          "name": "ordem",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "campos_customizados_chave_unique": {
+          "name": "campos_customizados_chave_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "chave"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "inventario.dispositivos_identificados": {
+      "name": "dispositivos_identificados",
+      "schema": "inventario",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "mac": {
+          "name": "mac",
+          "type": "varchar(17)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip": {
+          "name": "ip",
+          "type": "inet",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "classificacao": {
+          "name": "classificacao",
+          "type": "classificacao_dispositivo",
+          "typeSchema": "inventario",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "varchar(60)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descricao": {
+          "name": "descricao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usuario": {
+          "name": "usuario",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "dispositivos_mac_uq": {
+          "name": "dispositivos_mac_uq",
+          "columns": [
+            {
+              "expression": "mac",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"inventario\".\"dispositivos_identificados\".\"mac\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "dispositivos_ip_sem_mac_uq": {
+          "name": "dispositivos_ip_sem_mac_uq",
+          "columns": [
+            {
+              "expression": "ip",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"inventario\".\"dispositivos_identificados\".\"mac\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "inventario.funcionarios": {
+      "name": "funcionarios",
+      "schema": "inventario",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "matricula": {
+          "name": "matricula",
+          "type": "varchar(40)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "setor": {
+          "name": "setor",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpf": {
+          "name": "cpf",
+          "type": "varchar(11)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ramal": {
+          "name": "ramal",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "celular": {
+          "name": "celular",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gerente_id": {
+          "name": "gerente_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ativo": {
+          "name": "ativo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "funcionarios_nome_idx": {
+          "name": "funcionarios_nome_idx",
+          "columns": [
+            {
+              "expression": "nome",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "funcionarios_gerente_idx": {
+          "name": "funcionarios_gerente_idx",
+          "columns": [
+            {
+              "expression": "gerente_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "funcionarios_gerente_id_funcionarios_id_fk": {
+          "name": "funcionarios_gerente_id_funcionarios_id_fk",
+          "tableFrom": "funcionarios",
+          "tableTo": "funcionarios",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "gerente_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "funcionarios_matricula_unique": {
+          "name": "funcionarios_matricula_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "matricula"
+          ]
+        },
+        "funcionarios_cpf_unique": {
+          "name": "funcionarios_cpf_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "cpf"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "funcionarios_gerente_proprio_ck": {
+          "name": "funcionarios_gerente_proprio_ck",
+          "value": "\"inventario\".\"funcionarios\".\"gerente_id\" <> \"inventario\".\"funcionarios\".\"id\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "inventario.grupos": {
+      "name": "grupos",
+      "schema": "inventario",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descricao": {
+          "name": "descricao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "tipo_grupo",
+          "typeSchema": "inventario",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criterios": {
+          "name": "criterios",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "grupos_nome_unique": {
+          "name": "grupos_nome_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "nome"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "inventario.grupos_itens": {
+      "name": "grupos_itens",
+      "schema": "inventario",
+      "columns": {
+        "grupo_id": {
+          "name": "grupo_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "grupos_itens_grupo_id_grupos_id_fk": {
+          "name": "grupos_itens_grupo_id_grupos_id_fk",
+          "tableFrom": "grupos_itens",
+          "tableTo": "grupos",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "grupo_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "grupos_itens_item_id_itens_id_fk": {
+          "name": "grupos_itens_item_id_itens_id_fk",
+          "tableFrom": "grupos_itens",
+          "tableTo": "itens",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "grupos_itens_grupo_id_item_id_pk": {
+          "name": "grupos_itens_grupo_id_item_id_pk",
+          "columns": [
+            "grupo_id",
+            "item_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "inventario.itens": {
+      "name": "itens",
+      "schema": "inventario",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "numero_patrimonio": {
+          "name": "numero_patrimonio",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "patrimonio_provisorio": {
+          "name": "patrimonio_provisorio",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "tag": {
+          "name": "tag",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descricao": {
+          "name": "descricao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "msf_host_id": {
+          "name": "msf_host_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "msf_workspace_id": {
+          "name": "msf_workspace_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "msf_workspace_nome": {
+          "name": "msf_workspace_nome",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip": {
+          "name": "ip",
+          "type": "inet",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mac": {
+          "name": "mac",
+          "type": "varchar(17)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hostname": {
+          "name": "hostname",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "os_name": {
+          "name": "os_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "os_flavor": {
+          "name": "os_flavor",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "os_sp": {
+          "name": "os_sp",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "os_family": {
+          "name": "os_family",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arch": {
+          "name": "arch",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "tipo_equipamento",
+          "typeSchema": "inventario",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'desktop'"
+        },
+        "status": {
+          "name": "status",
+          "type": "status_item",
+          "typeSchema": "inventario",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'em_uso'"
+        },
+        "funcionario_id": {
+          "name": "funcionario_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "setor": {
+          "name": "setor",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "localizacao": {
+          "name": "localizacao",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fabricante": {
+          "name": "fabricante",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "modelo": {
+          "name": "modelo",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "numero_serie": {
+          "name": "numero_serie",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_aquisicao": {
+          "name": "data_aquisicao",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nota_fiscal": {
+          "name": "nota_fiscal",
+          "type": "varchar(60)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fornecedor": {
+          "name": "fornecedor",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observacoes": {
+          "name": "observacoes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ultima_sincronizacao": {
+          "name": "ultima_sincronizacao",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ultimo_visto_msf": {
+          "name": "ultimo_visto_msf",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "itens_mac_uq": {
+          "name": "itens_mac_uq",
+          "columns": [
+            {
+              "expression": "mac",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "itens_ip_idx": {
+          "name": "itens_ip_idx",
+          "columns": [
+            {
+              "expression": "ip",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "itens_hostname_idx": {
+          "name": "itens_hostname_idx",
+          "columns": [
+            {
+              "expression": "lower(\"hostname\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "itens_serie_idx": {
+          "name": "itens_serie_idx",
+          "columns": [
+            {
+              "expression": "numero_serie",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "itens_funcionario_idx": {
+          "name": "itens_funcionario_idx",
+          "columns": [
+            {
+              "expression": "funcionario_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "itens_status_idx": {
+          "name": "itens_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "itens_tipo_idx": {
+          "name": "itens_tipo_idx",
+          "columns": [
+            {
+              "expression": "tipo",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "itens_setor_idx": {
+          "name": "itens_setor_idx",
+          "columns": [
+            {
+              "expression": "setor",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "itens_tag_idx": {
+          "name": "itens_tag_idx",
+          "columns": [
+            {
+              "expression": "tag",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "itens_provisorio_idx": {
+          "name": "itens_provisorio_idx",
+          "columns": [
+            {
+              "expression": "patrimonio_provisorio",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "itens_funcionario_id_funcionarios_id_fk": {
+          "name": "itens_funcionario_id_funcionarios_id_fk",
+          "tableFrom": "itens",
+          "tableTo": "funcionarios",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "funcionario_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "itens_numero_patrimonio_unique": {
+          "name": "itens_numero_patrimonio_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "numero_patrimonio"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "inventario.itens_campos_valores": {
+      "name": "itens_campos_valores",
+      "schema": "inventario",
+      "columns": {
+        "item_id": {
+          "name": "item_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "campo_id": {
+          "name": "campo_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor": {
+          "name": "valor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "itens_campos_valores_item_id_itens_id_fk": {
+          "name": "itens_campos_valores_item_id_itens_id_fk",
+          "tableFrom": "itens_campos_valores",
+          "tableTo": "itens",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "itens_campos_valores_campo_id_campos_customizados_id_fk": {
+          "name": "itens_campos_valores_campo_id_campos_customizados_id_fk",
+          "tableFrom": "itens_campos_valores",
+          "tableTo": "campos_customizados",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "campo_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "itens_campos_valores_item_id_campo_id_pk": {
+          "name": "itens_campos_valores_item_id_campo_id_pk",
+          "columns": [
+            "item_id",
+            "campo_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "inventario.itens_custos": {
+      "name": "itens_custos",
+      "schema": "inventario",
+      "columns": {
+        "item_id": {
+          "name": "item_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "valor_aquisicao": {
+          "name": "valor_aquisicao",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "custos_adicionais": {
+          "name": "custos_adicionais",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "valor_residual": {
+          "name": "valor_residual",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "data_inicio_uso": {
+          "name": "data_inicio_uso",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "taxa_anual": {
+          "name": "taxa_anual",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "turnos": {
+          "name": "turnos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "data_baixa": {
+          "name": "data_baixa",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observacao": {
+          "name": "observacao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usuario": {
+          "name": "usuario",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "itens_custos_item_id_itens_id_fk": {
+          "name": "itens_custos_item_id_itens_id_fk",
+          "tableFrom": "itens_custos",
+          "tableTo": "itens",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "itens_custos_valores_ck": {
+          "name": "itens_custos_valores_ck",
+          "value": "\"inventario\".\"itens_custos\".\"valor_aquisicao\" >= 0 and \"inventario\".\"itens_custos\".\"custos_adicionais\" >= 0 and \"inventario\".\"itens_custos\".\"valor_residual\" >= 0"
+        },
+        "itens_custos_residual_ck": {
+          "name": "itens_custos_residual_ck",
+          "value": "\"inventario\".\"itens_custos\".\"valor_residual\" <= \"inventario\".\"itens_custos\".\"valor_aquisicao\" + \"inventario\".\"itens_custos\".\"custos_adicionais\""
+        },
+        "itens_custos_taxa_ck": {
+          "name": "itens_custos_taxa_ck",
+          "value": "\"inventario\".\"itens_custos\".\"taxa_anual\" > 0 and \"inventario\".\"itens_custos\".\"taxa_anual\" <= 100"
+        },
+        "itens_custos_turnos_ck": {
+          "name": "itens_custos_turnos_ck",
+          "value": "\"inventario\".\"itens_custos\".\"turnos\" between 1 and 3"
+        },
+        "itens_custos_baixa_ck": {
+          "name": "itens_custos_baixa_ck",
+          "value": "\"inventario\".\"itens_custos\".\"data_baixa\" is null or \"inventario\".\"itens_custos\".\"data_baixa\" >= \"inventario\".\"itens_custos\".\"data_inicio_uso\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "inventario.itens_discos": {
+      "name": "itens_discos",
+      "schema": "inventario",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tamanho_gb": {
+          "name": "tamanho_gb",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fabricante": {
+          "name": "fabricante",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "modelo": {
+          "name": "modelo",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "numero_serie": {
+          "name": "numero_serie",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origem": {
+          "name": "origem",
+          "type": "origem_dado",
+          "typeSchema": "inventario",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'manual'"
+        }
+      },
+      "indexes": {
+        "itens_discos_item_idx": {
+          "name": "itens_discos_item_idx",
+          "columns": [
+            {
+              "expression": "item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "itens_discos_item_id_itens_id_fk": {
+          "name": "itens_discos_item_id_itens_id_fk",
+          "tableFrom": "itens_discos",
+          "tableTo": "itens",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "inventario.itens_fotos": {
+      "name": "itens_fotos",
+      "schema": "inventario",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mime": {
+          "name": "mime",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'image/jpeg'"
+        },
+        "dados": {
+          "name": "dados",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "largura": {
+          "name": "largura",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "altura": {
+          "name": "altura",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tamanho_bytes": {
+          "name": "tamanho_bytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "usuario": {
+          "name": "usuario",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "itens_fotos_item_idx": {
+          "name": "itens_fotos_item_idx",
+          "columns": [
+            {
+              "expression": "item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "itens_fotos_item_id_itens_id_fk": {
+          "name": "itens_fotos_item_id_itens_id_fk",
+          "tableFrom": "itens_fotos",
+          "tableTo": "itens",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "itens_fotos_dimensao_ck": {
+          "name": "itens_fotos_dimensao_ck",
+          "value": "\"inventario\".\"itens_fotos\".\"largura\" between 1 and 1024 and \"inventario\".\"itens_fotos\".\"altura\" between 1 and 1024"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "inventario.itens_hardware": {
+      "name": "itens_hardware",
+      "schema": "inventario",
+      "columns": {
+        "item_id": {
+          "name": "item_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "cpu": {
+          "name": "cpu",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpu_nucleos": {
+          "name": "cpu_nucleos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ram_mb": {
+          "name": "ram_mb",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "placa_mae": {
+          "name": "placa_mae",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bios_fabricante": {
+          "name": "bios_fabricante",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bios_versao": {
+          "name": "bios_versao",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bios_data": {
+          "name": "bios_data",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origem": {
+          "name": "origem",
+          "type": "origem_dado",
+          "typeSchema": "inventario",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'manual'"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "itens_hardware_item_id_itens_id_fk": {
+          "name": "itens_hardware_item_id_itens_id_fk",
+          "tableFrom": "itens_hardware",
+          "tableTo": "itens",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "inventario.itens_historico": {
+      "name": "itens_historico",
+      "schema": "inventario",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "numero_patrimonio": {
+          "name": "numero_patrimonio",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "acao": {
+          "name": "acao",
+          "type": "acao_historico",
+          "typeSchema": "inventario",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "campo": {
+          "name": "campo",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "valor_antigo": {
+          "name": "valor_antigo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "valor_novo": {
+          "name": "valor_novo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usuario": {
+          "name": "usuario",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "itens_historico_item_idx": {
+          "name": "itens_historico_item_idx",
+          "columns": [
+            {
+              "expression": "item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "itens_historico_item_id_itens_id_fk": {
+          "name": "itens_historico_item_id_itens_id_fk",
+          "tableFrom": "itens_historico",
+          "tableTo": "itens",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "inventario.itens_interfaces": {
+      "name": "itens_interfaces",
+      "schema": "inventario",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip": {
+          "name": "ip",
+          "type": "inet",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mascara": {
+          "name": "mascara",
+          "type": "varchar(45)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mac": {
+          "name": "mac",
+          "type": "varchar(17)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vlan": {
+          "name": "vlan",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gateway": {
+          "name": "gateway",
+          "type": "inet",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origem": {
+          "name": "origem",
+          "type": "origem_dado",
+          "typeSchema": "inventario",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'manual'"
+        }
+      },
+      "indexes": {
+        "itens_interfaces_item_idx": {
+          "name": "itens_interfaces_item_idx",
+          "columns": [
+            {
+              "expression": "item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "itens_interfaces_mac_idx": {
+          "name": "itens_interfaces_mac_idx",
+          "columns": [
+            {
+              "expression": "mac",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "itens_interfaces_item_id_itens_id_fk": {
+          "name": "itens_interfaces_item_id_itens_id_fk",
+          "tableFrom": "itens_interfaces",
+          "tableTo": "itens",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "inventario.itens_softwares": {
+      "name": "itens_softwares",
+      "schema": "inventario",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "versao": {
+          "name": "versao",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "editor": {
+          "name": "editor",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_instalacao": {
+          "name": "data_instalacao",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dicionario_id": {
+          "name": "dicionario_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origem": {
+          "name": "origem",
+          "type": "origem_dado",
+          "typeSchema": "inventario",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'importacao'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "itens_softwares_item_idx": {
+          "name": "itens_softwares_item_idx",
+          "columns": [
+            {
+              "expression": "item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "itens_softwares_nome_idx": {
+          "name": "itens_softwares_nome_idx",
+          "columns": [
+            {
+              "expression": "lower(\"nome\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "itens_softwares_dic_idx": {
+          "name": "itens_softwares_dic_idx",
+          "columns": [
+            {
+              "expression": "dicionario_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "itens_softwares_item_id_itens_id_fk": {
+          "name": "itens_softwares_item_id_itens_id_fk",
+          "tableFrom": "itens_softwares",
+          "tableTo": "itens",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "itens_softwares_dicionario_id_software_dicionario_id_fk": {
+          "name": "itens_softwares_dicionario_id_software_dicionario_id_fk",
+          "tableFrom": "itens_softwares",
+          "tableTo": "software_dicionario",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "dicionario_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "inventario.software_dicionario": {
+      "name": "software_dicionario",
+      "schema": "inventario",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "nome_canonico": {
+          "name": "nome_canonico",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "categoria": {
+          "name": "categoria",
+          "type": "categoria_software",
+          "typeSchema": "inventario",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'outro'"
+        },
+        "editor": {
+          "name": "editor",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observacao": {
+          "name": "observacao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "software_dicionario_nome_canonico_unique": {
+          "name": "software_dicionario_nome_canonico_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "nome_canonico"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "inventario.software_variacoes": {
+      "name": "software_variacoes",
+      "schema": "inventario",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "dicionario_id": {
+          "name": "dicionario_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "padrao": {
+          "name": "padrao",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "software_variacoes_padrao_uq": {
+          "name": "software_variacoes_padrao_uq",
+          "columns": [
+            {
+              "expression": "lower(\"padrao\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "software_variacoes_dicionario_id_software_dicionario_id_fk": {
+          "name": "software_variacoes_dicionario_id_software_dicionario_id_fk",
+          "tableFrom": "software_variacoes",
+          "tableTo": "software_dicionario",
+          "schemaTo": "inventario",
+          "columnsFrom": [
+            "dicionario_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "inventario.usuarios": {
+      "name": "usuarios",
+      "schema": "inventario",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "senha_hash": {
+          "name": "senha_hash",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "papel": {
+          "name": "papel",
+          "type": "papel_usuario",
+          "typeSchema": "inventario",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'operador'"
+        },
+        "ativo": {
+          "name": "ativo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "usuarios_username_unique": {
+          "name": "usuarios_username_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "inventario.acao_historico": {
+      "name": "acao_historico",
+      "schema": "inventario",
+      "values": [
+        "criacao",
+        "alteracao",
+        "troca_responsavel",
+        "sincronizacao",
+        "importacao",
+        "mesclagem",
+        "exclusao"
+      ]
+    },
+    "inventario.categoria_software": {
+      "name": "categoria_software",
+      "schema": "inventario",
+      "values": [
+        "navegador",
+        "office",
+        "seguranca",
+        "desenvolvimento",
+        "sistema",
+        "comunicacao",
+        "utilitario",
+        "proibido",
+        "outro"
+      ]
+    },
+    "inventario.classificacao_dispositivo": {
+      "name": "classificacao_dispositivo",
+      "schema": "inventario",
+      "values": [
+        "conhecido",
+        "ignorado"
+      ]
+    },
+    "inventario.origem_dado": {
+      "name": "origem_dado",
+      "schema": "inventario",
+      "values": [
+        "msf",
+        "manual",
+        "importacao"
+      ]
+    },
+    "inventario.papel_usuario": {
+      "name": "papel_usuario",
+      "schema": "inventario",
+      "values": [
+        "admin",
+        "operador"
+      ]
+    },
+    "inventario.status_item": {
+      "name": "status_item",
+      "schema": "inventario",
+      "values": [
+        "em_uso",
+        "estoque",
+        "manutencao",
+        "baixado"
+      ]
+    },
+    "inventario.tipo_campo": {
+      "name": "tipo_campo",
+      "schema": "inventario",
+      "values": [
+        "texto",
+        "numero",
+        "data",
+        "lista"
+      ]
+    },
+    "inventario.tipo_equipamento": {
+      "name": "tipo_equipamento",
+      "schema": "inventario",
+      "values": [
+        "desktop",
+        "notebook",
+        "servidor",
+        "impressora",
+        "switch",
+        "smart_pos",
+        "outro"
+      ]
+    },
+    "inventario.tipo_grupo": {
+      "name": "tipo_grupo",
+      "schema": "inventario",
+      "values": [
+        "estatico",
+        "dinamico"
+      ]
+    }
+  },
+  "schemas": {
+    "inventario": "inventario"
+  },
+  "sequences": {
+    "inventario.patrimonio_provisorio_seq": {
+      "name": "patrimonio_provisorio_seq",
+      "schema": "inventario",
+      "increment": "1",
+      "startWith": "1",
+      "minValue": "1",
+      "maxValue": "9223372036854775807",
+      "cache": "1",
+      "cycle": false
+    }
+  },
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

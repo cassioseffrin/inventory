@@ -159,11 +159,16 @@ export async function montarEstrutura(
   }
 
   const itensMap = new Map<number, ItemInventarioDb>(itensRes.rows.map((x) => [x.id, x]));
+  // Primeiro IP/MAC de interface por item, usado quando o item não tem endereço próprio
+  const ipIface = new Map<number, string>();
+  const macIface = new Map<number, string>();
   for (const iface of ifacesRes.rows) {
     const it = itensMap.get(iface.item_id);
     if (!it) continue;
     const mac = normalizarMac(iface.mac);
     const ip = ipSemMascara(iface.ip);
+    if (ip && !ipIface.has(it.id)) ipIface.set(it.id, ip);
+    if (mac && !macIface.has(it.id)) macIface.set(it.id, mac);
     if (mac && !porMac.has(mac)) porMac.set(mac, it);
     if (ip && !porIp.has(ip)) porIp.set(ip, it);
   }
@@ -220,14 +225,16 @@ export async function montarEstrutura(
   if (escopo === 'todos_inventario') {
     for (const it of itensRes.rows) {
       if (!matchedItemIds.has(it.id)) {
+        // Itens sem endereço de rede (mouses, monitores, mobiliário...) não entram nos mapas
+        const ip = ipSemMascara(it.ip) || ipIface.get(it.id);
+        if (!ip) continue;
         totalApenasInventario++;
         totalInventariados++;
-        const ip = ipSemMascara(it.ip) || 'Sem IP';
 
         servidores.push({
           id: 100000 + it.id,
           address: ip,
-          mac: it.mac,
+          mac: it.mac || macIface.get(it.id) || null,
           name: it.hostname,
           os: [it.os_name, it.os_flavor].filter(Boolean).join(' ') || null,
           workspace: null,

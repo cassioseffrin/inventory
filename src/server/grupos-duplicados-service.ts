@@ -1,7 +1,7 @@
 import 'server-only';
 import { asc, eq, sql } from 'drizzle-orm';
 import { db } from '@/db/inv';
-import { grupos, gruposItens, itens, itensCamposValores, itensHardware, itensHistorico } from '@/db/schema';
+import { grupos, gruposItens, itens, itensCamposValores, itensCustos, itensHardware, itensHistorico } from '@/db/schema';
 import type { GrupoInput } from '@/lib/schemas';
 import { compilarCriterios } from './filtros-itens';
 import { criteriosSchema } from '@/lib/schemas';
@@ -159,6 +159,8 @@ export async function mesclar(manterId: number, removerId: number, escolhas: Rec
       FROM inventario.itens_campos_valores WHERE item_id = ${removerId} ON CONFLICT DO NOTHING`);
     const [hwA] = await tx.select({ id: itensHardware.itemId }).from(itensHardware).where(eq(itensHardware.itemId, manterId));
     if (!hwA) await tx.update(itensHardware).set({ itemId: manterId }).where(eq(itensHardware.itemId, removerId));
+    const [custoA] = await tx.select({ id: itensCustos.itemId }).from(itensCustos).where(eq(itensCustos.itemId, manterId));
+    if (!custoA) await tx.update(itensCustos).set({ itemId: manterId }).where(eq(itensCustos.itemId, removerId));
     await tx.update(itensHistorico).set({ itemId: manterId }).where(eq(itensHistorico.itemId, removerId));
 
     await tx.delete(itensCamposValores).where(eq(itensCamposValores.itemId, removerId));

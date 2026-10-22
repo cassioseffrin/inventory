@@ -54,6 +54,20 @@ export type ItemFoto = {
   createdAt: string;
 };
 
+export type ItemCusto = {
+  itemId: number;
+  valorAquisicao: string;
+  custosAdicionais: string;
+  valorResidual: string;
+  dataInicioUso: string;
+  taxaAnual: string;
+  turnos: number;
+  dataBaixa: string | null;
+  observacao: string | null;
+  usuario: string;
+  updatedAt: string;
+};
+
 export type Host = {
   id: number;
   address: string;

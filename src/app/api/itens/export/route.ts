@@ -2,7 +2,8 @@ import { itensFiltroSchema } from '@/lib/schemas';
 import { STATUS_LABEL, TIPO_LABEL } from '@/lib/constants';
 import { listarCampos } from '@/server/cadastros-service';
 import { db } from '@/db/inv';
-import { itensCamposValores } from '@/db/schema';
+import { itensCamposValores, itensCustos } from '@/db/schema';
+import { calcularDepreciacao } from '@/lib/depreciacao';
 import { query, rota } from '@/server/http';
 import { todosItens } from '@/server/itens-service';
 import { gerarCsv } from '@/server/util';
@@ -16,11 +17,28 @@ export const GET = rota(async ({ req }) => {
   const campos = await listarCampos(true);
   const valores = await db().select().from(itensCamposValores);
   const mapa = new Map(valores.map((v) => [`${v.itemId}:${v.campoId}`, v.valor]));
+  const custos = new Map((await db().select().from(itensCustos)).map((c) => [c.itemId, c]));
+  const brl = (v: number) => v.toFixed(2).replace('.', ',');
+  const depreciacao = (itemId: number) => {
+    const c = custos.get(itemId);
+    if (!c) return ['', '', '', ''];
+    const r = calcularDepreciacao({
+      valorAquisicao: Number(c.valorAquisicao),
+      custosAdicionais: Number(c.custosAdicionais),
+      valorResidual: Number(c.valorResidual),
+      dataInicioUso: c.dataInicioUso,
+      taxaAnual: Number(c.taxaAnual),
+      turnos: c.turnos,
+      dataBaixa: c.dataBaixa,
+    });
+    return [brl(r.custo), brl(r.taxaEfetiva), brl(r.acumulada), brl(r.valorContabil)];
+  };
 
   const cab = [
     'Patrimônio', 'Provisório', 'Descrição', 'TAG', 'Tipo', 'Status', 'Responsável', 'Matrícula', 'Setor', 'Localização',
     'Hostname', 'IP', 'MAC', 'SO', 'SO variante', 'Arquitetura', 'Fabricante', 'Modelo', 'Nº série',
     'Data aquisição', 'Nota fiscal', 'Fornecedor', 'Último visto msf', 'Última sincronização', 'Observações',
+    'Custo (R$)', 'Taxa efetiva (% a.a.)', 'Depreciação acumulada (R$)', 'Valor contábil (R$)',
     ...campos.map((c) => c.nome),
   ];
   const linhas = lista.map((i) => [
@@ -28,6 +46,7 @@ export const GET = rota(async ({ req }) => {
     i.funcionarioNome, i.funcionarioMatricula, i.setor, i.localizacao, i.hostname, i.ip, i.mac, i.osName, i.osFlavor,
     i.arch, i.fabricante, i.modelo, i.numeroSerie, i.dataAquisicao, i.notaFiscal, i.fornecedor,
     data(i.ultimoVistoMsf), data(i.ultimaSincronizacao), i.observacoes,
+    ...depreciacao(i.id),
     ...campos.map((c) => mapa.get(`${i.id}:${c.id}`) ?? ''),
   ]);
   const nome = `inventario-${new Date().toISOString().slice(0, 10)}.csv`;

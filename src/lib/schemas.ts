@@ -172,6 +172,29 @@ export const fotoSchema = z.object({
     .max(3_000_000, 'Imagem muito grande'),
 });
 
+/** Custo e depreciação do item; valores em reais. Regras em `src/lib/depreciacao.ts`. */
+const moeda = z.coerce.number().nonnegative().max(999_999_999_999.99);
+export const custoSchema = z
+  .object({
+    valorAquisicao: moeda,
+    custosAdicionais: moeda.default(0),
+    valorResidual: moeda.default(0),
+    dataInicioUso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (AAAA-MM-DD)'),
+    taxaAnual: z.coerce.number().positive('Informe a taxa').max(100),
+    turnos: z.coerce.number().int().min(1).max(3).default(1),
+    dataBaixa: dataOpt,
+    observacao: strOpt(2000),
+  })
+  .refine((c) => c.valorResidual <= c.valorAquisicao + c.custosAdicionais, {
+    message: 'Valor residual maior que o custo',
+    path: ['valorResidual'],
+  })
+  .refine((c) => !c.dataBaixa || c.dataBaixa >= c.dataInicioUso, {
+    message: 'Baixa anterior ao início de uso',
+    path: ['dataBaixa'],
+  });
+export type CustoInput = z.infer<typeof custoSchema>;
+
 // ---------------------------------------------------------------- dicionário
 export const dicionarioSchema = z.object({
   nomeCanonico: z.string().trim().min(1).max(255),

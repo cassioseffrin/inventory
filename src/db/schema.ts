@@ -283,6 +283,42 @@ export const itensFotos = inv.table(
   ],
 );
 
+// ---------------------------------------------------------------- custo e depreciação
+/**
+ * Custo de aquisição e parâmetros de depreciação linear do item (1:1).
+ * Regras e cálculo em `src/lib/depreciacao.ts` (RIR/2018, IN RFB 1.700/2017 Anexo III, CPC 27).
+ */
+export const itensCustos = inv.table(
+  'itens_custos',
+  {
+    itemId: integer('item_id')
+      .primaryKey()
+      .references(() => itens.id, { onDelete: 'cascade' }),
+    /** Valor do bem na nota fiscal. */
+    valorAquisicao: numeric('valor_aquisicao', { precision: 14, scale: 2 }).notNull(),
+    /** Frete, seguro, instalação e impostos não recuperáveis, que compõem o custo (CPC 27, item 16). */
+    custosAdicionais: numeric('custos_adicionais', { precision: 14, scale: 2 }).notNull().default('0'),
+    valorResidual: numeric('valor_residual', { precision: 14, scale: 2 }).notNull().default('0'),
+    /** Início da depreciação: quando o bem foi instalado/posto em serviço (RIR/2018, art. 317). */
+    dataInicioUso: date('data_inicio_uso').notNull(),
+    /** Taxa anual em % (ex.: 20.00 = 5 anos). */
+    taxaAnual: numeric('taxa_anual', { precision: 5, scale: 2 }).notNull(),
+    /** Turnos diários de operação: coeficiente de aceleração 1,0 / 1,5 / 2,0 (RIR/2018, art. 323). */
+    turnos: integer('turnos').notNull().default(1),
+    dataBaixa: date('data_baixa'),
+    observacao: text('observacao'),
+    usuario: varchar('usuario', { length: 64 }).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('itens_custos_valores_ck', sql`${t.valorAquisicao} >= 0 and ${t.custosAdicionais} >= 0 and ${t.valorResidual} >= 0`),
+    check('itens_custos_residual_ck', sql`${t.valorResidual} <= ${t.valorAquisicao} + ${t.custosAdicionais}`),
+    check('itens_custos_taxa_ck', sql`${t.taxaAnual} > 0 and ${t.taxaAnual} <= 100`),
+    check('itens_custos_turnos_ck', sql`${t.turnos} between 1 and 3`),
+    check('itens_custos_baixa_ck', sql`${t.dataBaixa} is null or ${t.dataBaixa} >= ${t.dataInicioUso}`),
+  ],
+);
+
 // ---------------------------------------------------------------- software + dicionário
 export const softwareDicionario = inv.table('software_dicionario', {
   id: serial('id').primaryKey(),

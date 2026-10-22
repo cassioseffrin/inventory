@@ -6,14 +6,15 @@ import {
   funcionarios,
   itens,
   itensCamposValores,
+  itensCustos,
   itensDiscos,
   itensFotos,
   itensHardware,
   itensInterfaces,
   itensSoftwares,
 } from '@/db/schema';
-import type { CampoCustomInput, FuncionarioInput } from '@/lib/schemas';
-import { registrar } from './historico';
+import type { CampoCustomInput, CustoInput, FuncionarioInput } from '@/lib/schemas';
+import { diff, registrar } from './historico';
 import { HttpError, naoEncontrado, type Pagina } from './http';
 import { reclassificarSoftwares } from './dicionario-service';
 import { ipSemMascara, normalizarMac } from './util';
@@ -313,4 +314,51 @@ export async function removerFoto(itemId: number, fotoId: number, usuario: strin
     .returning({ id: itensFotos.id });
   if (!r.length) throw naoEncontrado('Foto');
   await registrar(db(), ref, 'alteracao', usuario, [{ campo: 'foto', antigo: `#${fotoId}`, novo: null }]);
+}
+
+// ---------------------------------------------------------------- custo e depreciação
+const CAMPOS_CUSTO = ['valorAquisicao', 'custosAdicionais', 'valorResidual', 'dataInicioUso', 'taxaAnual', 'turnos', 'dataBaixa', 'observacao'];
+
+export async function obterCusto(itemId: number) {
+  await itemRef(itemId);
+  const [c] = await db().select().from(itensCustos).where(eq(itensCustos.itemId, itemId));
+  return c ?? null;
+}
+
+export async function salvarCusto(itemId: number, d: CustoInput, usuario: string) {
+  const ref = await itemRef(itemId);
+  const [atual] = await db().select().from(itensCustos).where(eq(itensCustos.itemId, itemId));
+  // numeric volta como string do driver ("1500.00"); converte para comparar com o que veio do formulário
+  const antes = atual
+    ? {
+        ...atual,
+        valorAquisicao: Number(atual.valorAquisicao),
+        custosAdicionais: Number(atual.custosAdicionais),
+        valorResidual: Number(atual.valorResidual),
+        taxaAnual: Number(atual.taxaAnual),
+      }
+    : {};
+  const valores = {
+    itemId,
+    valorAquisicao: d.valorAquisicao.toFixed(2),
+    custosAdicionais: d.custosAdicionais.toFixed(2),
+    valorResidual: d.valorResidual.toFixed(2),
+    dataInicioUso: d.dataInicioUso,
+    taxaAnual: d.taxaAnual.toFixed(2),
+    turnos: d.turnos,
+    dataBaixa: d.dataBaixa ?? null,
+    observacao: d.observacao ?? null,
+    usuario,
+    updatedAt: new Date(),
+  };
+  await db().insert(itensCustos).values(valores).onConflictDoUpdate({ target: itensCustos.itemId, set: valores });
+  const mudancas = diff(antes, { ...d, dataBaixa: d.dataBaixa ?? null, observacao: d.observacao ?? null }, CAMPOS_CUSTO);
+  if (mudancas.length) await registrar(db(), ref, 'alteracao', usuario, mudancas);
+}
+
+export async function removerCusto(itemId: number, usuario: string) {
+  const ref = await itemRef(itemId);
+  const r = await db().delete(itensCustos).where(eq(itensCustos.itemId, itemId)).returning({ v: itensCustos.valorAquisicao });
+  if (!r.length) throw naoEncontrado('Custo');
+  await registrar(db(), ref, 'alteracao', usuario, [{ campo: 'custo', antigo: `aquisição ${r[0].v}`, novo: null }]);
 }
