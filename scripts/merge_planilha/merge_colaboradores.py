@@ -421,7 +421,11 @@ class Merge:
             elif atual['numero_patrimonio'] == pat:
                 self.rel['conflitos'].append(f"{desc}: item tem MAC {atual['mac']} (planilha diz {mac}) — mantido")
         if atual['tipo'] != tipo:
-            patch['tipo'] = tipo
+            if tipo == 'outro':
+                # a planilha só diz "TELA/TECLADO..."; não rebaixa um tipo específico (ex.: vindo da patrimonial)
+                self.rel['avisos'].append(f"{desc}: item é {atual['tipo']!r} no banco ({atual['descricao'] or atual['modelo']}) — tipo mantido")
+            else:
+                patch['tipo'] = tipo
         if func_id and atual['funcionario_id'] != func_id:
             patch['funcionario_id'] = func_id
         if setor and atual['setor'] != setor:

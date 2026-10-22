@@ -36,6 +36,7 @@ const intOpt = z.preprocess(
 // ---------------------------------------------------------------- itens
 export const itemBaseSchema = z.object({
   numeroPatrimonio: z.string().trim().min(1, 'Obrigatório').max(50),
+  descricao: strOpt(1000),
   tag: strOpt(100),
   ip: ipOpt,
   mac: macOpt,
@@ -161,6 +162,14 @@ export const softwareSchema = z.object({
   versao: strOpt(100),
   editor: strOpt(255),
   dataInstalacao: strOpt(30),
+});
+
+/** Foto já reduzida no navegador: data URL JPEG (máx. 1024x1024). */
+export const fotoSchema = z.object({
+  dados: z
+    .string()
+    .regex(/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/, 'Imagem deve ser JPEG em base64')
+    .max(3_000_000, 'Imagem muito grande'),
 });
 
 // ---------------------------------------------------------------- dicionário

@@ -1,20 +1,22 @@
 'use client';
 
 import { Alert, Anchor, Badge, Button, Card, Center, Group, Loader, Modal, SimpleGrid, Stack, Tabs, Text, Title } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconEdit, IconRefresh, IconTrash } from '@tabler/icons-react';
+import { IconArrowLeft, IconCamera, IconEdit, IconRefresh, IconTrash } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { ItemForm, itemParaForm } from '@/components/ItemForm';
+import { AbaFotos } from '@/components/item/Fotos';
 import { AbaHardware, AbaHistorico, AbaRede, AbaServicos, AbaSoftware } from '@/components/item/Secoes';
 import { SyncModal } from '@/components/item/SyncModal';
 import { api, mensagemErro } from '@/lib/api';
 import { STATUS_COLOR, STATUS_LABEL, TIPO_LABEL } from '@/lib/constants';
 import { diasDesde, fmtData, fmtDataHora, fmtRelativo } from '@/lib/format';
-import type { CampoCustom, ItemDetalhe } from '@/lib/types';
+import type { CampoCustom, ItemDetalhe, ItemFoto } from '@/lib/types';
 
 function Campo({ label, children, mono }: { label: string; children: ReactNode; mono?: boolean }) {
   return (
@@ -36,8 +38,11 @@ export default function ItemPage() {
   const qc = useQueryClient();
   const [editando, setEditando] = useState(false);
   const [sync, setSync] = useState(false);
+  const [aba, setAba] = useState<string | null>('geral');
+  const mobile = useMediaQuery('(max-width: 48em)');
   const { data: item, isLoading, error } = useQuery({ queryKey: ['item', id], queryFn: () => api<ItemDetalhe>(`/api/itens/${id}`) });
   const { data: campos = [] } = useQuery({ queryKey: ['campos', 'todos'], queryFn: () => api<CampoCustom[]>('/api/campos') });
+  const { data: fotos } = useQuery({ queryKey: ['fotos', id], queryFn: () => api<ItemFoto[]>(`/api/itens/${id}/fotos`) });
 
   if (isLoading)
     return (
@@ -88,8 +93,16 @@ export default function ItemPage() {
           {item.tag && <Badge variant="dot">{item.tag}</Badge>}
         </Group>
         <Group gap="xs">
+          <Button hiddenFrom="sm" variant="light" leftSection={<IconCamera size={16} />} onClick={() => setAba('fotos')}>
+            Fotos
+          </Button>
           <Button variant="default" leftSection={<IconRefresh size={16} />} onClick={() => setSync(true)}>
-            Sincronizar com msf
+            <Text span inherit visibleFrom="sm">
+              Sincronizar com msf
+            </Text>
+            <Text span inherit hiddenFrom="sm">
+              Sincronizar
+            </Text>
           </Button>
           <Button leftSection={<IconEdit size={16} />} onClick={() => setEditando(true)}>
             Editar
@@ -103,9 +116,12 @@ export default function ItemPage() {
         {[item.hostname, item.ip, item.osName].filter(Boolean).join(' · ')}
       </Text>
 
-      <Tabs defaultValue="geral" keepMounted={false}>
-        <Tabs.List>
+      <Tabs value={aba} onChange={setAba} keepMounted={false}>
+        <Tabs.List style={{ flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none' }}>
           <Tabs.Tab value="geral">Geral</Tabs.Tab>
+          <Tabs.Tab value="fotos" leftSection={<IconCamera size={14} />}>
+            Fotos{fotos?.length ? ` (${fotos.length})` : ''}
+          </Tabs.Tab>
           <Tabs.Tab value="hardware">Hardware</Tabs.Tab>
           <Tabs.Tab value="rede">Rede</Tabs.Tab>
           <Tabs.Tab value="software">Software</Tabs.Tab>
@@ -119,6 +135,11 @@ export default function ItemPage() {
               <Title order={6} mb="sm">
                 Administrativo
               </Title>
+              {item.descricao && (
+                <Text size="sm" fw={600} mb="sm">
+                  {item.descricao}
+                </Text>
+              )}
               <SimpleGrid cols={{ base: 2, md: 4 }}>
                 <Campo label="Responsável">
                   {item.funcionarioId ? (
@@ -145,11 +166,12 @@ export default function ItemPage() {
                   </Campo>
                 ))}
               </SimpleGrid>
-              {item.observacoes && (
-                <Text size="sm" mt="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                  <b>Observações:</b> {item.observacoes}
-                </Text>
-              )}
+              <Text size="xs" c="dimmed" mt="sm">
+                Observações
+              </Text>
+              <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                {item.observacoes || '—'}
+              </Text>
             </Card>
             <Card withBorder>
               <Title order={6} mb="sm">
@@ -181,6 +203,9 @@ export default function ItemPage() {
             </Card>
           </Stack>
         </Tabs.Panel>
+        <Tabs.Panel value="fotos" pt="md">
+          <AbaFotos itemId={id} />
+        </Tabs.Panel>
         <Tabs.Panel value="hardware" pt="md">
           <AbaHardware itemId={id} />
         </Tabs.Panel>
@@ -198,7 +223,7 @@ export default function ItemPage() {
         </Tabs.Panel>
       </Tabs>
 
-      <Modal opened={editando} onClose={() => setEditando(false)} size="xl" title={`Editar ${item.numeroPatrimonio}`}>
+      <Modal opened={editando} onClose={() => setEditando(false)} size="xl" fullScreen={mobile} title={`Editar ${item.numeroPatrimonio}`}>
         <ItemForm
           inicial={itemParaForm(item)}
           itemId={id}

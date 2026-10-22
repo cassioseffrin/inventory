@@ -1,0 +1,1 @@
+ALTER TABLE "inventario"."itens" ADD COLUMN "descricao" text;

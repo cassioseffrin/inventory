@@ -113,6 +113,8 @@ export const itens = inv.table(
     /** true quando o número foi gerado automaticamente na importação em massa (PROV-xxxxxx). */
     patrimonioProvisorio: boolean('patrimonio_provisorio').notNull().default(false),
     tag: varchar('tag', { length: 100 }),
+    /** Descrição patrimonial (ex.: "MONITOR ACER AL1717 ETL72081..."). */
+    descricao: text('descricao'),
     // origem no msf (snapshot; sem FK)
     msfHostId: integer('msf_host_id'),
     msfWorkspaceId: integer('msf_workspace_id'),
@@ -253,6 +255,32 @@ export const itensInterfaces = inv.table(
     origem: origemDado('origem').notNull().default('manual'),
   },
   (t) => [index('itens_interfaces_item_idx').on(t.itemId), index('itens_interfaces_mac_idx').on(t.mac)],
+);
+
+// ---------------------------------------------------------------- fotos
+/**
+ * Fotos do item (cadeira, suporte, etiqueta...). JPEG em base64 (sem o prefixo data:),
+ * já reduzido no navegador para no máximo 1024x1024 mantendo a proporção.
+ */
+export const itensFotos = inv.table(
+  'itens_fotos',
+  {
+    id: serial('id').primaryKey(),
+    itemId: integer('item_id')
+      .notNull()
+      .references(() => itens.id, { onDelete: 'cascade' }),
+    mime: varchar('mime', { length: 30 }).notNull().default('image/jpeg'),
+    dados: text('dados').notNull(),
+    largura: integer('largura').notNull(),
+    altura: integer('altura').notNull(),
+    tamanhoBytes: integer('tamanho_bytes').notNull(),
+    usuario: varchar('usuario', { length: 64 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('itens_fotos_item_idx').on(t.itemId, t.createdAt),
+    check('itens_fotos_dimensao_ck', sql`${t.largura} between 1 and 1024 and ${t.altura} between 1 and 1024`),
+  ],
 );
 
 // ---------------------------------------------------------------- software + dicionário

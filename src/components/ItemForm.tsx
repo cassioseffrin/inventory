@@ -58,6 +58,7 @@ const formSchema = z.object({
   notaFiscal: z.string().max(60),
   fornecedor: z.string().max(150),
   observacoes: z.string().max(5000),
+  descricao: z.string().max(1000),
   camposCustomizados: z.record(z.string(), z.string().nullable()),
 });
 export type ItemFormValues = z.infer<typeof formSchema>;
@@ -85,6 +86,7 @@ export const VAZIO: ItemFormValues = {
   notaFiscal: '',
   fornecedor: '',
   observacoes: '',
+  descricao: '',
   camposCustomizados: {},
 };
 
@@ -211,6 +213,8 @@ export function ItemForm({ inicial, itemId, funcionarioNome, origemMsf, submitLa
             )}
           />
         </SimpleGrid>
+
+        <TextInput label="Descrição" placeholder="Ex.: MONITOR LG FLATRON L1918S" {...register('descricao')} error={formState.errors.descricao?.message} />
 
         <Divider label="Rede / sistema (snapshot do msf, editável)" labelPosition="left" />
         <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }}>

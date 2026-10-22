@@ -1,3 +1,8 @@
+# rodar migrate
+node scripts/migrate.mjs 
+migrations aplicadas.
+
+
 # Inventário de TI (fonte: Metasploit)
 
 Sistema web de inventário de ativos de TI. Ele usa como fonte os hosts que o **Metasploit Framework** descobre nos scans (`db_nmap`) feitos no Kali Linux. Os hosts são lidos do banco do msf **somente em modo leitura** e copiados (snapshot) para um banco próprio, `inventario`, onde ganham dados administrativos: patrimônio, responsável, setor, hardware, software, grupos e histórico.

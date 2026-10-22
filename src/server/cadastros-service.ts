@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, eq, getTableColumns, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm';
 import { db } from '@/db/inv';
 import {
   camposCustomizados,
@@ -7,6 +7,7 @@ import {
   itens,
   itensCamposValores,
   itensDiscos,
+  itensFotos,
   itensHardware,
   itensInterfaces,
   itensSoftwares,
@@ -252,4 +253,64 @@ export async function adicionarSoftware(itemId: number, d: { nome: string; versa
   await db().insert(itensSoftwares).values({ ...d, itemId, origem: 'manual' });
   await reclassificarSoftwares(itemId);
   await registrar(db(), ref, 'alteracao', usuario, [{ campo: 'software', antigo: null, novo: d.nome }]);
+}
+
+// ---------------------------------------------------------------- fotos do item
+const FOTO_MAX_LADO = 1024;
+
+/** Lê largura/altura do marcador SOF de um JPEG (null se não for um JPEG válido). */
+function dimensoesJpeg(b: Buffer): { largura: number; altura: number } | null {
+  if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 9 < b.length) {
+    if (b[i] !== 0xff) return null;
+    const marcador = b[i + 1];
+    // SOF0..SOF15, exceto DHT (C4), JPG (C8) e DAC (CC)
+    if (marcador >= 0xc0 && marcador <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marcador)) {
+      return { altura: b.readUInt16BE(i + 5), largura: b.readUInt16BE(i + 7) };
+    }
+    i += 2 + b.readUInt16BE(i + 2);
+  }
+  return null;
+}
+
+export async function listarFotos(itemId: number) {
+  await itemRef(itemId);
+  const { dados: _, ...colunas } = getTableColumns(itensFotos);
+  return db().select(colunas).from(itensFotos).where(eq(itensFotos.itemId, itemId)).orderBy(desc(itensFotos.createdAt), desc(itensFotos.id));
+}
+
+export async function obterFoto(itemId: number, fotoId: number) {
+  const [f] = await db()
+    .select({ mime: itensFotos.mime, dados: itensFotos.dados })
+    .from(itensFotos)
+    .where(and(eq(itensFotos.id, fotoId), eq(itensFotos.itemId, itemId)));
+  if (!f) throw naoEncontrado('Foto');
+  return f;
+}
+
+export async function adicionarFoto(itemId: number, dataUrl: string, usuario: string) {
+  const ref = await itemRef(itemId);
+  const dados = dataUrl.slice(dataUrl.indexOf(',') + 1);
+  const bin = Buffer.from(dados, 'base64');
+  const dim = dimensoesJpeg(bin);
+  if (!dim) throw new HttpError(400, 'Imagem JPEG inválida');
+  if (dim.largura > FOTO_MAX_LADO || dim.altura > FOTO_MAX_LADO)
+    throw new HttpError(400, `Imagem excede ${FOTO_MAX_LADO}x${FOTO_MAX_LADO} (${dim.largura}x${dim.altura})`);
+  const [foto] = await db()
+    .insert(itensFotos)
+    .values({ itemId, mime: 'image/jpeg', dados, ...dim, tamanhoBytes: bin.length, usuario })
+    .returning({ id: itensFotos.id, createdAt: itensFotos.createdAt });
+  await registrar(db(), ref, 'alteracao', usuario, [{ campo: 'foto', antigo: null, novo: `#${foto.id} (${dim.largura}x${dim.altura})` }]);
+  return foto;
+}
+
+export async function removerFoto(itemId: number, fotoId: number, usuario: string) {
+  const ref = await itemRef(itemId);
+  const r = await db()
+    .delete(itensFotos)
+    .where(and(eq(itensFotos.id, fotoId), eq(itensFotos.itemId, itemId)))
+    .returning({ id: itensFotos.id });
+  if (!r.length) throw naoEncontrado('Foto');
+  await registrar(db(), ref, 'alteracao', usuario, [{ campo: 'foto', antigo: `#${fotoId}`, novo: null }]);
 }

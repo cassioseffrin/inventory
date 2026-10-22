@@ -117,7 +117,7 @@ export async function contarDuplicados() {
 export const CAMPOS_MESCLA = [
   'numeroPatrimonio', 'tag', 'ip', 'mac', 'hostname', 'osName', 'osFlavor', 'osSp', 'osFamily', 'arch', 'tipo', 'status',
   'funcionarioId', 'setor', 'localizacao', 'fabricante', 'modelo', 'numeroSerie', 'dataAquisicao', 'notaFiscal', 'fornecedor',
-  'observacoes', 'msfHostId', 'msfWorkspaceId', 'msfWorkspaceNome', 'ultimoVistoMsf', 'ultimaSincronizacao',
+  'observacoes', 'descricao', 'msfHostId', 'msfWorkspaceId', 'msfWorkspaceNome', 'ultimoVistoMsf', 'ultimaSincronizacao',
 ] as const;
 
 /**

@@ -195,7 +195,7 @@ async function gravarCustom(tx: DbOrTx, item: { id: number; numeroPatrimonio: st
 // ---------------------------------------------------------------- CRUD
 
 const CAMPOS_ITEM = [
-  'numeroPatrimonio', 'tag', 'ip', 'mac', 'hostname', 'osName', 'osFlavor', 'osSp', 'osFamily', 'arch', 'tipo', 'status',
+  'numeroPatrimonio', 'descricao', 'tag', 'ip', 'mac', 'hostname', 'osName', 'osFlavor', 'osSp', 'osFamily', 'arch', 'tipo', 'status',
   'funcionarioId', 'setor', 'localizacao', 'fabricante', 'modelo', 'numeroSerie', 'dataAquisicao', 'notaFiscal',
   'fornecedor', 'observacoes', 'msfHostId', 'msfWorkspaceId', 'msfWorkspaceNome',
 ] as const;

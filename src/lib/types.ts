@@ -31,6 +31,7 @@ export type Item = {
   notaFiscal: string | null;
   fornecedor: string | null;
   observacoes: string | null;
+  descricao: string | null;
   ultimaSincronizacao: string | null;
   ultimoVistoMsf: string | null;
   createdAt: string;
@@ -40,6 +41,17 @@ export type Item = {
 export type ItemDetalhe = Item & {
   camposCustomizados: Record<string, string | null>;
   gruposEstaticos: { id: number; nome: string }[];
+};
+
+export type ItemFoto = {
+  id: number;
+  itemId: number;
+  mime: string;
+  largura: number;
+  altura: number;
+  tamanhoBytes: number;
+  usuario: string;
+  createdAt: string;
 };
 
 export type Host = {

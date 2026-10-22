@@ -90,6 +90,7 @@ export type CampoSync = (typeof CAMPOS_SYNC)[number];
 
 export const CAMPO_LABEL: Record<string, string> = {
   numeroPatrimonio: 'Patrimônio',
+  foto: 'Foto',
   tag: 'TAG',
   ip: 'IP',
   mac: 'MAC',
@@ -111,6 +112,7 @@ export const CAMPO_LABEL: Record<string, string> = {
   notaFiscal: 'Nota fiscal',
   fornecedor: 'Fornecedor',
   observacoes: 'Observações',
+  descricao: 'Descrição',
   msfHostId: 'Host msf (id)',
   msfWorkspaceId: 'Workspace msf (id)',
 };

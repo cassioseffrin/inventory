@@ -119,7 +119,8 @@ export async function whereItens(f: Partial<ItensFiltro>): Promise<SQL | undefin
     c.push(
       sql`(${itens.numeroPatrimonio} ILIKE ${p} OR ${itens.hostname} ILIKE ${p} OR host(${itens.ip}) ILIKE ${p}
         OR ${itens.mac} ILIKE ${p} OR ${itens.osName} ILIKE ${p} OR ${itens.tag} ILIKE ${p}
-        OR ${itens.numeroSerie} ILIKE ${p} OR ${itens.modelo} ILIKE ${p} OR ${itens.localizacao} ILIKE ${p})`,
+        OR ${itens.numeroSerie} ILIKE ${p} OR ${itens.modelo} ILIKE ${p} OR ${itens.localizacao} ILIKE ${p}
+        OR ${itens.descricao} ILIKE ${p})`,
     );
   }
   if (f.funcionarioId) c.push(eq(itens.funcionarioId, f.funcionarioId));

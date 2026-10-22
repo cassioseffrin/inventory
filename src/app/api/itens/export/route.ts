@@ -18,13 +18,13 @@ export const GET = rota(async ({ req }) => {
   const mapa = new Map(valores.map((v) => [`${v.itemId}:${v.campoId}`, v.valor]));
 
   const cab = [
-    'Patrimônio', 'Provisório', 'TAG', 'Tipo', 'Status', 'Responsável', 'Matrícula', 'Setor', 'Localização',
+    'Patrimônio', 'Provisório', 'Descrição', 'TAG', 'Tipo', 'Status', 'Responsável', 'Matrícula', 'Setor', 'Localização',
     'Hostname', 'IP', 'MAC', 'SO', 'SO variante', 'Arquitetura', 'Fabricante', 'Modelo', 'Nº série',
     'Data aquisição', 'Nota fiscal', 'Fornecedor', 'Último visto msf', 'Última sincronização', 'Observações',
     ...campos.map((c) => c.nome),
   ];
   const linhas = lista.map((i) => [
-    i.numeroPatrimonio, i.patrimonioProvisorio ? 'sim' : 'não', i.tag, TIPO_LABEL[i.tipo], STATUS_LABEL[i.status],
+    i.numeroPatrimonio, i.patrimonioProvisorio ? 'sim' : 'não', i.descricao, i.tag, TIPO_LABEL[i.tipo], STATUS_LABEL[i.status],
     i.funcionarioNome, i.funcionarioMatricula, i.setor, i.localizacao, i.hostname, i.ip, i.mac, i.osName, i.osFlavor,
     i.arch, i.fabricante, i.modelo, i.numeroSerie, i.dataAquisicao, i.notaFiscal, i.fornecedor,
     data(i.ultimoVistoMsf), data(i.ultimaSincronizacao), i.observacoes,

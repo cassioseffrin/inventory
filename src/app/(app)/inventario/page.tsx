@@ -151,6 +151,15 @@ function Inventario() {
           </Group>
         ),
       },
+      {
+        id: 'descricao',
+        header: 'Descrição',
+        cell: ({ row }) => (
+          <Text size="sm" lineClamp={1} maw={320} title={row.original.descricao ?? undefined}>
+            {row.original.descricao ?? row.original.modelo ?? '—'}
+          </Text>
+        ),
+      },
       { id: 'tipo', header: 'Tipo', cell: ({ row }) => TIPO_LABEL[row.original.tipo] },
       {
         id: 'status',
