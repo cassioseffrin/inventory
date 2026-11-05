@@ -94,6 +94,10 @@ export const funcionarios = inv.table(
     celular: varchar('celular', { length: 20 }),
     /** Gestor imediato (outro funcionário). */
     gerenteId: integer('gerente_id').references((): AnyPgColumn => funcionarios.id, { onDelete: 'set null' }),
+    /** Login (CPF + senha). NULL = senha provisória: o próprio CPF. */
+    senhaHash: varchar('senha_hash', { length: 100 }),
+    /** Perfil admin. Sem isso o perfil é derivado: gerente se tiver subordinados, senão comum. */
+    admin: boolean('admin').notNull().default(false),
     ativo: boolean('ativo').notNull().default(true),
     ...timestamps,
   },

@@ -78,3 +78,43 @@ export async function contadoresMenu() {
 
   return { ...r.rows[0], duplicados, hosts } as Record<string, number | null>;
 }
+
+/** `i.funcionario_id` dentro do escopo; ids são inteiros vindos do banco, mas filtrados de novo por garantia. */
+const condEscopo = (escopo: number[]) => {
+  const ids = escopo.filter((n) => Number.isInteger(n));
+  return ids.length ? `i.funcionario_id IN (${ids.join(',')})` : 'false';
+};
+
+/**
+ * Dashboard dos perfis gerente/comum: só os itens do escopo (a própria pessoa e, para gerente,
+ * a equipe). Nada de msf, duplicados ou totais globais.
+ */
+export async function dashboardPessoal(escopo: number[]) {
+  const w = condEscopo(escopo);
+  const [porTipo, porStatus, porFuncionario, totais] = await Promise.all([
+    contarPor('i.tipo::text', w),
+    contarPor('i.status::text', w),
+    contarPor('f.nome', w),
+    db().execute<{ itens: number; comSoftwareProibido: number }>(
+      sql.raw(`SELECT count(*)::int AS itens,
+        count(*) FILTER (WHERE EXISTS (
+          SELECT 1 FROM inventario.itens_softwares s
+          JOIN inventario.software_dicionario d ON d.id = s.dicionario_id AND d.categoria = 'proibido'
+          WHERE s.item_id = i.id))::int AS "comSoftwareProibido"
+        FROM inventario.itens i WHERE ${w}`),
+    ),
+  ]);
+  return { pessoal: true as const, totais: { ...totais.rows[0], equipe: escopo.length - 1 }, porTipo, porStatus, porFuncionario };
+}
+
+/** Badges do menu para gerente/comum: só o que está no escopo. */
+export async function contadoresMenuPessoal(escopo: number[]) {
+  const w = condEscopo(escopo);
+  const r = await db().execute<Record<string, number>>(
+    sql.raw(`SELECT (SELECT count(*)::int FROM inventario.itens i WHERE ${w}) AS inventario,
+      (SELECT count(DISTINCT lower(s.nome))::int FROM inventario.itens_softwares s
+         JOIN inventario.itens i ON i.id = s.item_id WHERE ${w}) AS software`),
+  );
+  return r.rows[0] as Record<string, number | null>;
+}
+

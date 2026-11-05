@@ -8,6 +8,11 @@ const filtro = z.object({
   pageSize: z.coerce.number().int().min(1).max(500).default(25),
   q: z.string().trim().optional(),
   setor: z.string().optional(),
+  gerenteId: z.coerce.number().int().positive().optional(),
+  soGerentes: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
   ativo: z
     .enum(['true', 'false'])
     .optional()

@@ -1,4 +1,4 @@
 import { rota } from '@/server/http';
-import { dashboard } from '@/server/dashboard-service';
+import { dashboard, dashboardPessoal } from '@/server/dashboard-service';
 
-export const GET = rota(async () => dashboard());
+export const GET = rota(async ({ escopo }) => (escopo ? dashboardPessoal(escopo) : dashboard()), { restrito: true });

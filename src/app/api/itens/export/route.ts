@@ -11,9 +11,9 @@ import { gerarCsv } from '@/server/util';
 const data = (d: Date | string | null) => (d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '');
 
 /** Exporta em CSV os itens do filtro atual (inclusive grupo) com os campos customizados. */
-export const GET = rota(async ({ req }) => {
+export const GET = rota(async ({ req, escopo }) => {
   const f = itensFiltroSchema.partial().parse(Object.fromEntries(req.nextUrl.searchParams));
-  const lista = await todosItens(f);
+  const lista = await todosItens(f, escopo);
   const campos = await listarCampos(true);
   const valores = await db().select().from(itensCamposValores);
   const mapa = new Map(valores.map((v) => [`${v.itemId}:${v.campoId}`, v.valor]));
@@ -53,4 +53,4 @@ export const GET = rota(async ({ req }) => {
   return new Response(gerarCsv(cab, linhas), {
     headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="${nome}"` },
   });
-});
+}, { restrito: true });

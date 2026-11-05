@@ -1,3 +1,4 @@
 import { rota } from '@/server/http';
 
-export const GET = rota(async ({ sessao }) => sessao);
+/** Sessão atual com o papel revalidado no banco (pode ter mudado desde o login). */
+export const GET = rota(async ({ sessao }) => sessao, { restrito: true });

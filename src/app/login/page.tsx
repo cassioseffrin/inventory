@@ -46,7 +46,7 @@ function LoginForm() {
                 {erro}
               </Alert>
             )}
-            <TextInput label="Usuário" autoComplete="username" autoFocus {...register('username')} error={formState.errors.username?.message} />
+            <TextInput label="CPF ou usuário" placeholder="000.000.000-00" autoComplete="username" autoFocus {...register('username')} error={formState.errors.username?.message} />
             <PasswordInput label="Senha" autoComplete="current-password" {...register('senha')} error={formState.errors.senha?.message} />
             <Button type="submit" loading={formState.isSubmitting} fullWidth>
               Entrar

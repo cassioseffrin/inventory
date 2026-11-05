@@ -1,6 +1,6 @@
 'use client';
 
-import { ActionIcon, Anchor, Badge, Button, Group, SegmentedControl, Stack, Text, TextInput, Title, Tooltip } from '@mantine/core';
+import { ActionIcon, Anchor, Badge, Button, Group, SegmentedControl, Select, Stack, Text, TextInput, Title, Tooltip } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
@@ -25,7 +25,20 @@ export default function FuncionariosPage() {
   const [page, setPage] = useState(1);
   const [editar, setEditar] = useState<Funcionario | 'novo' | null>(null);
   const [associar, setAssociar] = useState<Funcionario | null>(null);
-  const params = { q, ativo: ativo === 'todos' ? undefined : ativo, page, pageSize: 25 };
+  // null = sem filtro; 'todos' = somente quem tem equipe; id = equipe daquele gerente
+  const [gerente, setGerente] = useState<string | null>(null);
+  const { data: gerentes = [] } = useQuery({
+    queryKey: ['funcionarios', 'gerentes'],
+    queryFn: () => api<{ id: number; nome: string; matricula: string; ativo: boolean; equipe: number }[]>('/api/funcionarios/gerentes'),
+  });
+  const params = {
+    q,
+    ativo: ativo === 'todos' ? undefined : ativo,
+    soGerentes: gerente === 'todos' ? 'true' : undefined,
+    gerenteId: gerente && gerente !== 'todos' ? gerente : undefined,
+    page,
+    pageSize: 25,
+  };
   const { data, isFetching } = useQuery({
     queryKey: ['funcionarios', params],
     queryFn: () => api<Pagina<Funcionario>>(`/api/funcionarios${qs(params)}`),
@@ -149,6 +162,25 @@ export default function FuncionariosPage() {
             { value: 'true', label: 'Ativos' },
             { value: 'false', label: 'Inativos' },
             { value: 'todos', label: 'Todos' },
+          ]}
+        />
+        <Select
+          placeholder="Gerente: todos"
+          searchable
+          clearable
+          w={300}
+          value={gerente}
+          onChange={(v) => {
+            setGerente(v);
+            setPage(1);
+          }}
+          nothingFoundMessage="Nenhum gerente"
+          data={[
+            { value: 'todos', label: 'Somente gerentes' },
+            ...gerentes.map((g) => ({
+              value: String(g.id),
+              label: `Equipe de ${g.nome} (${g.equipe})${g.ativo ? '' : ' [inativo]'}`,
+            })),
           ]}
         />
       </Group>

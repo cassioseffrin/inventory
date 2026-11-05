@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { NextResponse, type NextRequest } from 'next/server';
 import { ZodError, type ZodTypeAny, type z } from 'zod';
 import { env } from './env';
+import { resolverAcesso } from './auth-service';
 import { COOKIE_NAME, verificarToken, type Sessao } from './jwt';
 
 export class HttpError extends Error {
@@ -18,8 +19,16 @@ export class HttpError extends Error {
 
 export const naoEncontrado = (o = 'Registro') => new HttpError(404, `${o} não encontrado`);
 
-type Ctx<P> = { req: NextRequest; params: P; sessao: Sessao };
-type Opts = { admin?: boolean; aceitaToken?: boolean };
+/**
+ * `escopo`: ids de funcionários cujos itens a sessão pode ver (gerente = ele + equipe, comum = ele);
+ * null = sem restrição (admin).
+ */
+type Ctx<P> = { req: NextRequest; params: P; sessao: Sessao; escopo: number[] | null };
+/**
+ * Por padrão a rota é só de admin. `restrito: true` libera também gerente/comum — o handler
+ * fica responsável por aplicar `escopo` (só usar em leituras).
+ */
+type Opts = { restrito?: boolean; aceitaToken?: boolean };
 
 function sessaoPorToken(req: NextRequest): Sessao | null {
   const esperado = env().IMPORT_API_TOKEN;
@@ -28,12 +37,12 @@ function sessaoPorToken(req: NextRequest): Sessao | null {
   const a = Buffer.from(h.slice(7).trim());
   const b = Buffer.from(esperado);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-  return { id: 0, username: 'api-token', nome: 'Token de API', papel: 'operador' };
+  return { id: 0, username: 'api-token', nome: 'Token de API', papel: 'admin' };
 }
 
 /**
  * Envolve um route handler: exige sessão válida (o middleware já barra, aqui é defesa em profundidade),
- * opcionalmente papel admin, e converte erros em respostas JSON consistentes.
+ * aplica o perfil de acesso (revalidado no banco a cada requisição) e converte erros em respostas JSON.
  */
 export function rota<P = Record<string, string>>(
   fn: (ctx: Ctx<P>) => Promise<Response | unknown>,
@@ -44,9 +53,10 @@ export function rota<P = Record<string, string>>(
       const sessao =
         (await verificarToken((await cookies()).get(COOKIE_NAME)?.value)) ?? (opts.aceitaToken ? sessaoPorToken(req) : null);
       if (!sessao) throw new HttpError(401, 'Não autenticado');
-      if (opts.admin && sessao.papel !== 'admin') throw new HttpError(403, 'Requer perfil administrador');
+      const { papel, escopo } = await resolverAcesso(sessao);
+      if (papel !== 'admin' && !opts.restrito) throw new HttpError(403, 'Sem permissão para esta operação');
       const params = (segment?.params ? await segment.params : {}) as P;
-      const out = await fn({ req, params, sessao });
+      const out = await fn({ req, params, sessao: { ...sessao, papel }, escopo });
       if (out instanceof Response) return out;
       if (out === undefined) return new NextResponse(null, { status: 204 });
       return NextResponse.json(out);

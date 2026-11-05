@@ -108,6 +108,10 @@ export type Funcionario = {
   gerenteId: number | null;
   /** nome do gerente (listagem/detalhe) */
   gerenteNome?: string | null;
+  /** perfil admin (sem ele: gerente se tiver equipe, senão comum) */
+  admin: boolean;
+  /** false = senha provisória (o CPF) */
+  senhaDefinida?: boolean;
   ativo: boolean;
   itens?: number;
 };
@@ -145,4 +149,5 @@ export type Grupo = {
   total?: number;
 };
 
-export type Sessao = { id: number; username: string; nome: string; papel: 'admin' | 'operador' };
+export type Papel = 'admin' | 'gerente' | 'comum';
+export type Sessao = { id: number; username: string; nome: string; papel: Papel; funcionarioId?: number; senhaProvisoria?: boolean };

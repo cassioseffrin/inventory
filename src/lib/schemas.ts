@@ -104,6 +104,7 @@ export const funcionarioSchema = z.object({
     z.string().refine(telefoneValido, 'Celular inválido').nullable().optional(),
   ),
   gerenteId: z.preprocess((v) => (v === '' ? null : v), z.coerce.number().int().positive().nullable().optional()),
+  admin: z.boolean().optional(),
   ativo: z.boolean().default(true),
 });
 export type FuncionarioInput = z.infer<typeof funcionarioSchema>;
@@ -273,6 +274,11 @@ export type GrupoInput = z.infer<typeof grupoSchema>;
 
 // ---------------------------------------------------------------- auth
 export const loginSchema = z.object({
-  username: z.string().trim().min(1, 'Informe o usuário'),
+  username: z.string().trim().min(1, 'Informe o CPF ou usuário'),
   senha: z.string().min(1, 'Informe a senha'),
+});
+
+export const alterarSenhaSchema = z.object({
+  atual: z.string().min(1, 'Informe a senha atual'),
+  nova: z.string().min(8, 'Mínimo de 8 caracteres').max(100),
 });

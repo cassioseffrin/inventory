@@ -6,7 +6,7 @@ import { notifications } from '@mantine/notifications';
 import { IconEdit, IconLock, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useSessao } from '@/components/Shell';
+import { useSessao } from '@/components/useSessao';
 import { api, mensagemErro } from '@/lib/api';
 import type { CampoCustom } from '@/lib/types';
 

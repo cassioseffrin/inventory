@@ -102,6 +102,22 @@ export async function ondeInstalado(f: { dicionarioId?: number; nome?: string })
   return r.rows;
 }
 
+/** Perfis gerente/comum: softwares instalados nos itens do escopo (com a categoria do dicionário). */
+export async function softwaresDoEscopo(escopo: number[]) {
+  if (!escopo.length) return [];
+  const r = await db().execute(sql`
+    SELECT i.id AS "itemId", i.numero_patrimonio AS "numeroPatrimonio", i.hostname, f.nome AS "funcionarioNome",
+           s.nome AS software, s.versao, s.editor, d.nome_canonico AS "nomeCanonico", d.categoria
+    FROM inventario.itens_softwares s
+    JOIN inventario.itens i ON i.id = s.item_id
+    LEFT JOIN inventario.funcionarios f ON f.id = i.funcionario_id
+    LEFT JOIN inventario.software_dicionario d ON d.id = s.dicionario_id
+    WHERE i.funcionario_id IN (${sql.join(escopo.map((id) => sql`${id}`), sql`, `)})
+    ORDER BY lower(coalesce(d.nome_canonico, s.nome)), i.numero_patrimonio
+    LIMIT 5000`);
+  return r.rows;
+}
+
 /** Alertas: softwares de categoria "proibido" instalados. */
 export async function alertasProibidos() {
   const r = await db().execute(sql`

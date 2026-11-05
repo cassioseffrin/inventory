@@ -1,4 +1,4 @@
 import { rota } from '@/server/http';
-import { contadoresMenu } from '@/server/dashboard-service';
+import { contadoresMenu, contadoresMenuPessoal } from '@/server/dashboard-service';
 
-export const GET = rota(async () => contadoresMenu());
+export const GET = rota(async ({ escopo }) => (escopo ? contadoresMenuPessoal(escopo) : contadoresMenu()), { restrito: true });

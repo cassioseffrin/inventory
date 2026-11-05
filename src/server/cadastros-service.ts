@@ -21,7 +21,13 @@ import { ipSemMascara, normalizarMac } from './util';
 
 // ---------------------------------------------------------------- funcionários
 
-const gerenteNome = sql<string | null>`(SELECT g.nome FROM inventario.funcionarios g WHERE g.id = ${funcionarios.gerenteId})`;
+// `${funcionarios}.gerente_id` qualificado: o drizzle escreve `${funcionarios.gerenteId}` como "gerente_id",
+// que dentro da subquery seria resolvido como g.gerente_id (e o nome do gerente viria sempre null)
+/** Colunas seguras para devolver ao cliente: nunca o hash da senha. */
+const { senhaHash: _senhaHash, ...colunasFuncionario } = getTableColumns(funcionarios);
+const senhaDefinida = sql<boolean>`(${funcionarios}.senha_hash IS NOT NULL)`;
+
+const gerenteNome = sql<string | null>`(SELECT g.nome FROM inventario.funcionarios g WHERE g.id = ${funcionarios}.gerente_id)`;
 
 /** O gerente precisa existir e não pode ser o próprio funcionário nem alguém da equipe dele (ciclo). */
 async function validarGerente(id: number | null, gerenteId: number | null | undefined) {
@@ -39,9 +45,22 @@ async function validarGerente(id: number | null, gerenteId: number | null | unde
   if (r.rows.some((x) => x.ciclo)) throw new HttpError(400, 'Gerente inválido: ele já está abaixo deste funcionário na hierarquia');
 }
 
-export async function listarFuncionarios(f: { q?: string; ativo?: boolean; setor?: string; page: number; pageSize: number }): Promise<Pagina<typeof funcionarios.$inferSelect & { itens: number }>> {
+/** Tem ao menos um subordinado. `${funcionarios}.id` qualificado pelo mesmo motivo do gerenteNome. */
+const ehGerente = sql`EXISTS (SELECT 1 FROM inventario.funcionarios s WHERE s.gerente_id = ${funcionarios}.id)`;
+
+export async function listarFuncionarios(f: {
+  q?: string;
+  ativo?: boolean;
+  setor?: string;
+  gerenteId?: number;
+  soGerentes?: boolean;
+  page: number;
+  pageSize: number;
+}): Promise<Pagina<Omit<typeof funcionarios.$inferSelect, 'senhaHash'> & { itens: number; senhaDefinida: boolean }>> {
   const like = f.q ? `%${f.q.replace(/[\\%_]/g, (c) => '\\' + c)}%` : null;
   const where = and(
+    f.gerenteId ? eq(funcionarios.gerenteId, f.gerenteId) : undefined,
+    f.soGerentes ? ehGerente : undefined,
     like ? sql`(${funcionarios.nome} ILIKE ${like} OR ${funcionarios.matricula} ILIKE ${like} OR ${funcionarios.email} ILIKE ${like})` : undefined,
     f.ativo === undefined ? undefined : eq(funcionarios.ativo, f.ativo),
     f.setor ? sql`lower(${funcionarios.setor}) = lower(${f.setor})` : undefined,
@@ -49,7 +68,8 @@ export async function listarFuncionarios(f: { q?: string; ativo?: boolean; setor
   const [dados, [{ total }]] = await Promise.all([
     db()
       .select({
-        ...getTableColumns(funcionarios),
+        ...colunasFuncionario,
+        senhaDefinida,
         gerenteNome,
         itens: sql<number>`(SELECT count(*)::int FROM inventario.itens i WHERE i.funcionario_id = ${funcionarios.id})`,
       })
@@ -63,20 +83,40 @@ export async function listarFuncionarios(f: { q?: string; ativo?: boolean; setor
   return { dados, total, page: f.page, pageSize: f.pageSize };
 }
 
+/** Funcionários que têm equipe (ao menos um subordinado), com o tamanho da equipe. */
+export async function listarGerentes() {
+  return db()
+    .select({
+      id: funcionarios.id,
+      nome: funcionarios.nome,
+      matricula: funcionarios.matricula,
+      ativo: funcionarios.ativo,
+      equipe: sql<number>`(SELECT count(*)::int FROM inventario.funcionarios s WHERE s.gerente_id = ${funcionarios}.id)`,
+    })
+    .from(funcionarios)
+    .where(ehGerente)
+    .orderBy(asc(funcionarios.nome));
+}
+
 /** Lista curta para o select com busca. */
-export async function opcoesFuncionarios(q?: string) {
+export async function opcoesFuncionarios(q?: string, escopo?: number[] | null) {
   const like = q ? `%${q.replace(/[\\%_]/g, (c) => '\\' + c)}%` : null;
   return db()
     .select({ id: funcionarios.id, nome: funcionarios.nome, matricula: funcionarios.matricula, setor: funcionarios.setor, ativo: funcionarios.ativo })
     .from(funcionarios)
-    .where(like ? sql`(${funcionarios.nome} ILIKE ${like} OR ${funcionarios.matricula} ILIKE ${like})` : undefined)
+    .where(
+      and(
+        like ? sql`(${funcionarios.nome} ILIKE ${like} OR ${funcionarios.matricula} ILIKE ${like})` : undefined,
+        escopo ? inArray(funcionarios.id, escopo) : undefined,
+      ),
+    )
     .orderBy(asc(funcionarios.nome))
     .limit(50);
 }
 
 export async function obterFuncionario(id: number) {
   const [f] = await db()
-    .select({ ...getTableColumns(funcionarios), gerenteNome })
+    .select({ ...colunasFuncionario, senhaDefinida, gerenteNome })
     .from(funcionarios)
     .where(eq(funcionarios.id, id));
   if (!f) throw naoEncontrado('Funcionário');
@@ -137,13 +177,13 @@ export async function associarItensFuncionario(id: number, d: { adicionar: numbe
 
 export async function criarFuncionario(d: FuncionarioInput) {
   await validarGerente(null, d.gerenteId);
-  const [f] = await db().insert(funcionarios).values(d).returning();
+  const [f] = await db().insert(funcionarios).values(d).returning(colunasFuncionario);
   return f;
 }
 
 export async function atualizarFuncionario(id: number, d: Partial<FuncionarioInput>) {
   await validarGerente(id, d.gerenteId);
-  const [f] = await db().update(funcionarios).set({ ...d, updatedAt: new Date() }).where(eq(funcionarios.id, id)).returning();
+  const [f] = await db().update(funcionarios).set({ ...d, updatedAt: new Date() }).where(eq(funcionarios.id, id)).returning(colunasFuncionario);
   if (!f) throw naoEncontrado('Funcionário');
   return f;
 }

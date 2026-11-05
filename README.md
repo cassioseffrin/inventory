@@ -61,7 +61,7 @@ O sistema incorpora conceitos do OCS Inventory NG, adaptados para uma fonte de d
 | UI | Mantine 7, TanStack Query, TanStack Table, React Hook Form + Zod |
 | Banco | PostgreSQL. **Drizzle ORM** com migrations versionadas em `drizzle/` |
 | Conexões | `pg` pool **read-only** para o msf + pool **read-write** para o inventário |
-| Auth | Usuário/senha (bcrypt) e JWT HS256 em cookie `httpOnly` (`jose`); middleware protege páginas e API |
+| Auth | CPF ou usuário + senha (bcrypt) e JWT HS256 em cookie `httpOnly` (`jose`). Perfis admin/gerente/comum; middleware protege páginas e API |
 
 > O requisito pedia frontend e backend separados. Com o Next.js os dois rodam no mesmo processo: a UI chama a API REST em `/api/*`, que é o backend, e tudo é servido por um único container.
 
@@ -83,7 +83,7 @@ Inspecionado no PostgreSQL 18.4 do Kali (`192.168.50.217`, banco `msf`):
 
 | Tabela | Conteúdo |
 |---|---|
-| `usuarios` | login do sistema (username, senha_hash bcrypt, papel admin/operador) |
+| `usuarios` | contas de emergência/técnicas (username, senha_hash bcrypt), sempre admin; funcionários entram pelo CPF |
 | `funcionarios` | nome, matrícula **UNIQUE**, e-mail, setor, ativo |
 | `itens` | **snapshot** do host + dados administrativos. `numero_patrimonio` UNIQUE, `patrimonio_provisorio`, `tag`, `msf_host_id`/`msf_workspace_id` (**sem FK**), ip, mac, hostname, os_*, arch, tipo, status, funcionario_id (FK, SET NULL), setor, localização, fabricante, modelo, numero_serie, aquisição/NF/fornecedor, observações, `ultima_sincronizacao`, `ultimo_visto_msf` |
 | `itens_historico` | auditoria: item_id (SET NULL; o histórico sobrevive à exclusão), acao, campo, valor_antigo, valor_novo, usuario, created_at |
@@ -208,11 +208,23 @@ Outros comandos:
 ```bash
 npm run typecheck
 npm run build && npm start                      # produção sem Docker
-npm run user:create -- joao 'SenhaForte123' operador "João Silva"
-npm run user:create -- maria 'OutraSenha456' admin
+npm run user:create -- maria 'OutraSenha456' admin   # conta de emergência/técnica (tabela usuarios)
 ```
 
-Perfis: **admin** gerencia campos customizados; **operador** faz o resto. Os usuários de login são gerenciados pelo script `user:create`.
+### Login e perfis de acesso
+
+O login aceita **CPF** (funcionário) ou **usuário** (conta da tabela `usuarios`).
+
+- **Funcionários** entram com o CPF. Enquanto `funcionarios.senha_hash` for NULL, a senha é o próprio CPF (provisória). O sistema mostra um aviso até a pessoa definir outra senha em `/senha`. O admin pode voltar a senha para o CPF na ficha do funcionário ("Resetar senha").
+- **`usuarios`** guarda só contas de emergência/técnicas (ex.: `admin`), que são sempre admin e não dependem do cadastro de RH.
+
+| Perfil | Quem | Acesso |
+| --- | --- | --- |
+| admin | funcionário com "Administrador" marcado, ou conta de `usuarios` | tudo |
+| gerente | funcionário com ao menos um subordinado | dashboard, inventário e software **dele e de toda a equipe abaixo dele**, só leitura |
+| comum | demais funcionários | dashboard, inventário e software **só dos próprios itens**, só leitura |
+
+O perfil é recalculado a cada requisição. Inativar o funcionário, tirar o admin ou mudar a equipe vale na hora. Na API, toda rota é só de admin, a menos que declare `rota(..., { restrito: true })`. Nesse caso o handler recebe `escopo` (ids de funcionários visíveis) e tem que aplicá-lo.
 
 ## Rodando com Docker
 

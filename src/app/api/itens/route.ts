@@ -3,7 +3,7 @@ import { itemBaseSchema, itensFiltroSchema } from '@/lib/schemas';
 import { corpo, query, rota } from '@/server/http';
 import { criarItem, listarItens } from '@/server/itens-service';
 
-export const GET = rota(async ({ req }) => listarItens(query(req, itensFiltroSchema)));
+export const GET = rota(async ({ req, escopo }) => listarItens(query(req, itensFiltroSchema), escopo), { restrito: true });
 
 const criacao = itemBaseSchema.extend({ confirmarDuplicado: z.boolean().optional() });
 

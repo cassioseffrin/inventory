@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq, or, sql, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '@/db/inv';
 import { grupos, itens } from '@/db/schema';
 import type { Criterios, ItensFiltro } from '@/lib/schemas';
@@ -112,8 +112,10 @@ export async function condicaoGrupo(grupoId: number): Promise<SQL> {
   return compilarCriterios(criteriosSchema.parse(g.criterios));
 }
 
-export async function whereItens(f: Partial<ItensFiltro>): Promise<SQL | undefined> {
+/** `escopo`: restringe aos itens desses responsáveis (perfil gerente/comum); null/undefined = todos. */
+export async function whereItens(f: Partial<ItensFiltro>, escopo?: number[] | null): Promise<SQL | undefined> {
   const c: SQL[] = [];
+  if (escopo) c.push(inArray(itens.funcionarioId, escopo));
   if (f.q) {
     const p = like(f.q);
     c.push(

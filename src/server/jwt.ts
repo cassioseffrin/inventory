@@ -3,7 +3,15 @@ import { SignJWT, jwtVerify } from 'jose';
 
 export const COOKIE_NAME = 'inv_token';
 
-export type Sessao = { id: number; username: string; nome: string; papel: 'admin' | 'operador' };
+export type Papel = 'admin' | 'gerente' | 'comum';
+
+/**
+ * `funcionarioId` presente = login de funcionário (CPF); ausente = conta da tabela `usuarios`
+ * (acesso de emergência / contas técnicas, sempre admin).
+ */
+export type Sessao = { id: number; username: string; nome: string; papel: Papel; funcionarioId?: number; senhaProvisoria?: boolean };
+
+const PAPEIS: Papel[] = ['admin', 'gerente', 'comum'];
 
 function secret() {
   const s = process.env.JWT_SECRET;
@@ -12,7 +20,7 @@ function secret() {
 }
 
 export async function assinarToken(s: Sessao, expiresIn = process.env.JWT_EXPIRES_IN || '8h') {
-  return new SignJWT({ username: s.username, nome: s.nome, papel: s.papel })
+  return new SignJWT({ username: s.username, nome: s.nome, papel: s.papel, fid: s.funcionarioId, prov: s.senhaProvisoria })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(String(s.id))
     .setIssuedAt()
@@ -24,13 +32,24 @@ export async function verificarToken(token: string | undefined): Promise<Sessao 
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret(), { algorithms: ['HS256'] });
+    const papel = PAPEIS.includes(payload.papel as Papel) ? (payload.papel as Papel) : 'comum';
+    // tokens antigos (antes dos perfis) traziam papel admin/operador e eram sempre da tabela usuarios
+    const legado = payload.papel === 'operador';
     return {
       id: Number(payload.sub),
       username: String(payload.username),
       nome: String(payload.nome),
-      papel: payload.papel === 'admin' ? 'admin' : 'operador',
+      papel: legado ? 'admin' : papel,
+      funcionarioId: typeof payload.fid === 'number' ? payload.fid : undefined,
+      senhaProvisoria: payload.prov === true,
     };
   } catch {
     return null;
   }
+}
+
+/** Páginas acessíveis a gerente/comum (o resto redireciona para o dashboard). */
+export function paginaPermitida(papel: Papel, pathname: string) {
+  if (papel === 'admin') return true;
+  return pathname === '/' || pathname === '/senha' || pathname === '/software' || pathname === '/inventario' || pathname.startsWith('/inventario/');
 }

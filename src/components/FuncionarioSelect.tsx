@@ -3,7 +3,7 @@
 import { Select, type SelectProps } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { api, qs } from '@/lib/api';
 
 type Opcao = { id: number; nome: string; matricula: string; setor: string | null; ativo: boolean };
@@ -24,12 +24,20 @@ export function FuncionarioSelect({ value, onChange, nomeAtual, excluirId, ...re
   const [busca, setBusca] = useState('');
   const [selLabel, setSelLabel] = useState<string | null>(null);
   const [debounced] = useDebouncedValue(busca, 250);
-  // ao escolher uma opção o Select preenche a busca com o label: não filtrar por ele
-  const termo = debounced === selLabel ? '' : debounced;
+  // o Select preenche a busca com o label da opção selecionada (ao escolher ou ao abrir já
+  // preenchido): não filtrar por ele, senão a lista mostraria só o próprio selecionado
+  const rotulosSel = useRef(new Set<string>());
+  if (selLabel) rotulosSel.current.add(selLabel);
+  if (nomeAtual) rotulosSel.current.add(nomeAtual);
+  if (value) rotulosSel.current.add(`#${value}`);
+  const termo = rotulosSel.current.has(debounced) ? '' : debounced;
   const { data = [], isFetching } = useQuery({
     queryKey: ['funcionarios-opcoes', termo],
     queryFn: () => api<Opcao[]>(`/api/funcionarios/opcoes${qs({ q: termo })}`),
   });
+
+  const atual = data.find((f) => f.id === value);
+  if (atual) rotulosSel.current.add(rotulo(atual));
 
   const opcoes = useMemo(() => {
     const list = data.filter((f) => f.id !== excluirId).map((f) => ({ value: String(f.id), label: rotulo(f) }));

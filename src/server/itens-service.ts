@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db, type DbOrTx } from '@/db/inv';
 import {
   camposCustomizados,
@@ -49,8 +49,8 @@ const achatar = (r: { item: typeof itens.$inferSelect; funcionarioNome: string |
   funcionarioMatricula: r.funcionarioMatricula,
 });
 
-export async function listarItens(f: ItensFiltro): Promise<Pagina<ItemRow>> {
-  const where = await whereItens(f);
+export async function listarItens(f: ItensFiltro, escopo?: number[] | null): Promise<Pagina<ItemRow>> {
+  const where = await whereItens(f, escopo);
   const col = ORDENACAO[(f.sort ?? 'numeroPatrimonio') as keyof typeof ORDENACAO] ?? itens.numeroPatrimonio;
   const ordem = f.dir === 'desc' ? sql`${col} DESC NULLS LAST` : sql`${col} ASC NULLS LAST`;
 
@@ -69,14 +69,27 @@ export async function listarItens(f: ItensFiltro): Promise<Pagina<ItemRow>> {
 }
 
 /** Todos os itens do filtro (para exportação CSV). */
-export async function todosItens(f: Partial<ItensFiltro>): Promise<ItemRow[]> {
+export async function todosItens(f: Partial<ItensFiltro>, escopo?: number[] | null): Promise<ItemRow[]> {
   const rows = await db()
     .select(SELECAO)
     .from(itens)
     .leftJoin(funcionarios, eq(funcionarios.id, itens.funcionarioId))
-    .where(await whereItens(f))
+    .where(await whereItens(f, escopo))
     .orderBy(asc(itens.numeroPatrimonio));
   return rows.map(achatar);
+}
+
+/**
+ * Perfil gerente/comum: o item precisa ser de alguém do escopo. Responde 404 (e não 403)
+ * para não revelar que o item existe.
+ */
+export async function garantirItemNoEscopo(id: number, escopo: number[] | null) {
+  if (!escopo) return;
+  const [r] = await db()
+    .select({ id: itens.id })
+    .from(itens)
+    .where(and(eq(itens.id, id), inArray(itens.funcionarioId, escopo)));
+  if (!r) throw naoEncontrado('Item');
 }
 
 export async function obterItem(id: number) {
