@@ -47,9 +47,3 @@ export async function verificarToken(token: string | undefined): Promise<Sessao 
     return null;
   }
 }
-
-/** Páginas acessíveis a gerente/comum (o resto redireciona para o dashboard). */
-export function paginaPermitida(papel: Papel, pathname: string) {
-  if (papel === 'admin') return true;
-  return pathname === '/' || pathname === '/senha' || pathname === '/software' || pathname === '/inventario' || pathname.startsWith('/inventario/');
-}

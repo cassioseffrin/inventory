@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { COOKIE_NAME, paginaPermitida, verificarToken } from '@/server/jwt';
+import { paginaPermitida } from '@/lib/acesso';
+import { COOKIE_NAME, verificarToken } from '@/server/jwt';
 
 const PUBLICAS = ['/login', '/api/auth/login'];
 /** Rotas que também aceitam `Authorization: Bearer <IMPORT_API_TOKEN>` (validado no handler). */

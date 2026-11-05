@@ -215,7 +215,7 @@ npm run user:create -- maria 'OutraSenha456' admin   # conta de emergência/téc
 
 O login aceita **CPF** (funcionário) ou **usuário** (conta da tabela `usuarios`).
 
-- **Funcionários** entram com o CPF. Enquanto `funcionarios.senha_hash` for NULL, a senha é o próprio CPF (provisória). O sistema mostra um aviso até a pessoa definir outra senha em `/senha`. O admin pode voltar a senha para o CPF na ficha do funcionário ("Resetar senha").
+- **Funcionários** entram com o CPF, só os 11 números (ex.: `02443342930`). Enquanto `funcionarios.senha_hash` for NULL, a senha é o próprio CPF, também só os números (provisória). O sistema mostra um aviso até a pessoa definir outra senha em `/senha`. O admin pode voltar a senha para o CPF na ficha do funcionário ("Resetar senha").
 - **`usuarios`** guarda só contas de emergência/técnicas (ex.: `admin`), que são sempre admin e não dependem do cadastro de RH.
 
 | Perfil | Quem | Acesso |

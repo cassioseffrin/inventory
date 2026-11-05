@@ -1,73 +1,33 @@
-"use client";
+'use client';
 
-import {
-  Alert,
-  Anchor,
-  Badge,
-  Button,
-  Card,
-  Center,
-  Group,
-  Image,
-  Loader,
-  Modal,
-  SimpleGrid,
-  Stack,
-  Tabs,
-  Text,
-  Title,
-  UnstyledButton,
-} from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
-import { modals } from "@mantine/modals";
-import { notifications } from "@mantine/notifications";
-import {
-  IconArrowLeft,
-  IconCamera,
-  IconCoin,
-  IconEdit,
-  IconRefresh,
-  IconTrash,
-} from "@tabler/icons-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
-import { ItemForm, itemParaForm } from "@/components/ItemForm";
-import { AbaCusto } from "@/components/item/Custo";
-import { AbaFotos } from "@/components/item/Fotos";
-import {
-  AbaHardware,
-  AbaHistorico,
-  AbaRede,
-  AbaServicos,
-  AbaSoftware,
-} from "@/components/item/Secoes";
-import { SyncModal } from "@/components/item/SyncModal";
-import { api, mensagemErro } from "@/lib/api";
-import { useEhAdmin } from "@/components/useSessao";
-import { STATUS_COLOR, STATUS_LABEL, TIPO_LABEL } from "@/lib/constants";
-import { diasDesde, fmtData, fmtDataHora, fmtRelativo } from "@/lib/format";
-import type { CampoCustom, ItemDetalhe, ItemFoto } from "@/lib/types";
+import { Alert, Anchor, Badge, Button, Card, Center, Group, Image, Loader, Modal, SimpleGrid, Stack, Tabs, Text, Title, UnstyledButton } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
+import { modals } from '@mantine/modals';
+import { notifications } from '@mantine/notifications';
+import { IconArrowLeft, IconCamera, IconCoin, IconEdit, IconRefresh, IconTrash } from '@tabler/icons-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useState, type ReactNode } from 'react';
+import { ItemForm, itemParaForm } from '@/components/ItemForm';
+import { AbaCusto } from '@/components/item/Custo';
+import { AbaFotos } from '@/components/item/Fotos';
+import { AbaHardware, AbaHistorico, AbaRede, AbaServicos, AbaSoftware } from '@/components/item/Secoes';
+import { SyncModal } from '@/components/item/SyncModal';
+import { api, mensagemErro } from '@/lib/api';
+import { useEhAdmin } from '@/components/useSessao';
+import { STATUS_COLOR, STATUS_LABEL, TIPO_LABEL } from '@/lib/constants';
+import { diasDesde, fmtData, fmtDataHora, fmtRelativo } from '@/lib/format';
+import type { CampoCustom, ItemDetalhe, ItemFoto } from '@/lib/types';
 
-function Campo({
-  label,
-  children,
-  mono,
-}: {
-  label: string;
-  children: ReactNode;
-  mono?: boolean;
-}) {
+function Campo({ label, children, mono }: { label: string; children: ReactNode; mono?: boolean }) {
   return (
     <div>
       <Text size="xs" c="dimmed">
         {label}
       </Text>
-      <Text size="sm" className={mono ? "mono" : undefined}>
-        {children === null || children === undefined || children === ""
-          ? "—"
-          : children}
+      <Text size="sm" className={mono ? 'mono' : undefined}>
+        {children === null || children === undefined || children === '' ? '—' : children}
       </Text>
     </div>
   );
@@ -80,25 +40,12 @@ export default function ItemPage() {
   const qc = useQueryClient();
   const [editando, setEditando] = useState(false);
   const [sync, setSync] = useState(false);
-  const [aba, setAba] = useState<string | null>("geral");
-  const mobile = useMediaQuery("(max-width: 48em)");
+  const [aba, setAba] = useState<string | null>('geral');
+  const mobile = useMediaQuery('(max-width: 48em)');
   const admin = useEhAdmin();
-  const {
-    data: item,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["item", id],
-    queryFn: () => api<ItemDetalhe>(`/api/itens/${id}`),
-  });
-  const { data: campos = [] } = useQuery({
-    queryKey: ["campos", "todos"],
-    queryFn: () => api<CampoCustom[]>("/api/campos"),
-  });
-  const { data: fotos } = useQuery({
-    queryKey: ["fotos", id],
-    queryFn: () => api<ItemFoto[]>(`/api/itens/${id}/fotos`),
-  });
+  const { data: item, isLoading, error } = useQuery({ queryKey: ['item', id], queryFn: () => api<ItemDetalhe>(`/api/itens/${id}`) });
+  const { data: campos = [] } = useQuery({ queryKey: ['campos', 'todos'], queryFn: () => api<CampoCustom[]>('/api/campos') });
+  const { data: fotos } = useQuery({ queryKey: ['fotos', id], queryFn: () => api<ItemFoto[]>(`/api/itens/${id}/fotos`) });
 
   if (isLoading)
     return (
@@ -106,26 +53,21 @@ export default function ItemPage() {
         <Loader />
       </Center>
     );
-  if (error || !item)
-    return (
-      <Alert color="red">
-        {error ? mensagemErro(error) : "Item não encontrado"}
-      </Alert>
-    );
+  if (error || !item) return <Alert color="red">{error ? mensagemErro(error) : 'Item não encontrado'}</Alert>;
 
   const excluir = () =>
     modals.openConfirmModal({
       title: `Excluir ${item.numeroPatrimonio}?`,
       children: <Text size="sm">O histórico de auditoria é preservado.</Text>,
-      labels: { confirm: "Excluir", cancel: "Cancelar" },
-      confirmProps: { color: "red" },
+      labels: { confirm: 'Excluir', cancel: 'Cancelar' },
+      confirmProps: { color: 'red' },
       onConfirm: async () => {
         try {
-          await api(`/api/itens/${id}`, { method: "DELETE" });
-          qc.invalidateQueries({ queryKey: ["itens"] });
-          router.push("/inventario");
+          await api(`/api/itens/${id}`, { method: 'DELETE' });
+          qc.invalidateQueries({ queryKey: ['itens'] });
+          router.push('/inventario');
         } catch (e) {
-          notifications.show({ color: "red", message: mensagemErro(e) });
+          notifications.show({ color: 'red', message: mensagemErro(e) });
         }
       },
     });
@@ -142,18 +84,8 @@ export default function ItemPage() {
       <Group justify="space-between">
         <Group gap="xs">
           {fotos?.[0] && (
-            <UnstyledButton
-              onClick={() => setAba("fotos")}
-              aria-label="Ver fotos"
-            >
-              <Image
-                src={`/api/itens/${id}/fotos/${fotos[0].id}?thumb=1`}
-                alt={`Foto de ${item.numeroPatrimonio}`}
-                w={48}
-                h={48}
-                radius="sm"
-                fit="cover"
-              />
+            <UnstyledButton onClick={() => setAba('fotos')} aria-label="Ver fotos">
+              <Image src={`/api/itens/${id}/fotos/${fotos[0].id}?thumb=1`} alt={`Foto de ${item.numeroPatrimonio}`} w={48} h={48} radius="sm" fit="cover" />
             </UnstyledButton>
           )}
           <Title order={3}>{item.numeroPatrimonio}</Title>
@@ -169,62 +101,38 @@ export default function ItemPage() {
           {item.tag && <Badge variant="dot">{item.tag}</Badge>}
         </Group>
         <Group gap="xs">
-          <Button
-            hiddenFrom="sm"
-            variant="light"
-            leftSection={<IconCamera size={16} />}
-            onClick={() => setAba("fotos")}
-          >
+          <Button hiddenFrom="sm" variant="light" leftSection={<IconCamera size={16} />} onClick={() => setAba('fotos')}>
             Fotos
           </Button>
           {admin && (
             <>
-              <Button
-                variant="default"
-                leftSection={<IconRefresh size={16} />}
-                onClick={() => setSync(true)}
-              >
-                <Text span inherit visibleFrom="sm">
-                  Sincronizar com msf
-                </Text>
-                <Text span inherit hiddenFrom="sm">
-                  Sincronizar
-                </Text>
-              </Button>
-              <Button
-                leftSection={<IconEdit size={16} />}
-                onClick={() => setEditando(true)}
-              >
-                Editar
-              </Button>
-              <Button
-                variant="subtle"
-                color="red"
-                leftSection={<IconTrash size={16} />}
-                onClick={excluir}
-              >
-                Excluir
-              </Button>
+          <Button variant="default" leftSection={<IconRefresh size={16} />} onClick={() => setSync(true)}>
+            <Text span inherit visibleFrom="sm">
+              Sincronizar com msf
+            </Text>
+            <Text span inherit hiddenFrom="sm">
+              Sincronizar
+            </Text>
+          </Button>
+          <Button leftSection={<IconEdit size={16} />} onClick={() => setEditando(true)}>
+            Editar
+          </Button>
+          <Button variant="subtle" color="red" leftSection={<IconTrash size={16} />} onClick={excluir}>
+            Excluir
+          </Button>
             </>
           )}
         </Group>
       </Group>
       <Text c="dimmed" size="sm">
-        {[item.hostname, item.ip, item.osName].filter(Boolean).join(" · ")}
+        {[item.hostname, item.ip, item.osName].filter(Boolean).join(' · ')}
       </Text>
 
       <Tabs value={aba} onChange={setAba} keepMounted={false}>
-        <Tabs.List
-          style={{
-            flexWrap: "nowrap",
-            overflowX: "auto",
-            overflowY: "hidden",
-            scrollbarWidth: "none",
-          }}
-        >
+        <Tabs.List style={{ flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none' }}>
           <Tabs.Tab value="geral">Geral</Tabs.Tab>
           <Tabs.Tab value="fotos" leftSection={<IconCamera size={14} />}>
-            Fotos{fotos?.length ? ` (${fotos.length})` : ""}
+            Fotos{fotos?.length ? ` (${fotos.length})` : ''}
           </Tabs.Tab>
           <Tabs.Tab value="custo" leftSection={<IconCoin size={14} />}>
             Custo e depreciação
@@ -251,10 +159,7 @@ export default function ItemPage() {
                 <Campo label="Responsável">
                   {item.funcionarioId ? (
                     admin ? (
-                      <Anchor
-                        component={Link}
-                        href={`/funcionarios/${item.funcionarioId}`}
-                      >
+                      <Anchor component={Link} href={`/funcionarios/${item.funcionarioId}`}>
                         {item.funcionarioNome} ({item.funcionarioMatricula})
                       </Anchor>
                     ) : (
@@ -270,19 +175,12 @@ export default function ItemPage() {
                 <Campo label="Nº de série" mono>
                   {item.numeroSerie}
                 </Campo>
-                <Campo label="Data de aquisição">
-                  {item.dataAquisicao ? fmtData(item.dataAquisicao) : null}
-                </Campo>
+                <Campo label="Data de aquisição">{item.dataAquisicao ? fmtData(item.dataAquisicao) : null}</Campo>
                 <Campo label="Nota fiscal">{item.notaFiscal}</Campo>
                 <Campo label="Fornecedor">{item.fornecedor}</Campo>
-                <Campo label="Grupos estáticos">
-                  {item.gruposEstaticos.map((g) => g.nome).join(", ")}
-                </Campo>
+                <Campo label="Grupos estáticos">{item.gruposEstaticos.map((g) => g.nome).join(', ')}</Campo>
                 {campos.map((c) => (
-                  <Campo
-                    key={c.id}
-                    label={`${c.nome}${c.ativo ? "" : " (inativo)"}`}
-                  >
+                  <Campo key={c.id} label={`${c.nome}${c.ativo ? '' : ' (inativo)'}`}>
                     {item.camposCustomizados[String(c.id)]}
                   </Campo>
                 ))}
@@ -290,8 +188,8 @@ export default function ItemPage() {
               <Text size="xs" c="dimmed" mt="sm">
                 Observações
               </Text>
-              <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                {item.observacoes || "—"}
+              <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                {item.observacoes || '—'}
               </Text>
             </Card>
             <Card withBorder>
@@ -307,34 +205,19 @@ export default function ItemPage() {
                 </Campo>
                 <Campo label="Hostname">{item.hostname}</Campo>
                 <Campo label="Arquitetura">{item.arch}</Campo>
-                <Campo label="Sistema operacional">
-                  {[item.osName, item.osFlavor, item.osSp]
-                    .filter(Boolean)
-                    .join(" ")}
-                </Campo>
+                <Campo label="Sistema operacional">{[item.osName, item.osFlavor, item.osSp].filter(Boolean).join(' ')}</Campo>
                 <Campo label="Família">{item.osFamily}</Campo>
                 <Campo label="Origem msf">
-                  {item.msfHostId
-                    ? `host #${item.msfHostId} · ws ${item.msfWorkspaceNome ?? item.msfWorkspaceId}`
-                    : null}
+                  {item.msfHostId ? `host #${item.msfHostId} · ws ${item.msfWorkspaceNome ?? item.msfWorkspaceId}` : null}
                 </Campo>
-                <Campo label="Última sincronização">
-                  {fmtDataHora(item.ultimaSincronizacao)}
-                </Campo>
+                <Campo label="Última sincronização">{fmtDataHora(item.ultimaSincronizacao)}</Campo>
                 <Campo label="Último visto no msf">
-                  <Text
-                    span
-                    c={dias === null || dias > 30 ? "red" : undefined}
-                    size="sm"
-                  >
-                    {fmtDataHora(item.ultimoVistoMsf)} (
-                    {fmtRelativo(item.ultimoVistoMsf)})
+                  <Text span c={dias === null || dias > 30 ? 'red' : undefined} size="sm">
+                    {fmtDataHora(item.ultimoVistoMsf)} ({fmtRelativo(item.ultimoVistoMsf)})
                   </Text>
                 </Campo>
                 <Campo label="Criado em">{fmtDataHora(item.createdAt)}</Campo>
-                <Campo label="Atualizado em">
-                  {fmtDataHora(item.updatedAt)}
-                </Campo>
+                <Campo label="Atualizado em">{fmtDataHora(item.updatedAt)}</Campo>
               </SimpleGrid>
             </Card>
           </Stack>
@@ -343,12 +226,7 @@ export default function ItemPage() {
           <AbaFotos itemId={id} />
         </Tabs.Panel>
         <Tabs.Panel value="custo" pt="md">
-          <AbaCusto
-            itemId={id}
-            tipo={item.tipo}
-            status={item.status}
-            dataAquisicao={item.dataAquisicao}
-          />
+          <AbaCusto itemId={id} tipo={item.tipo} status={item.status} dataAquisicao={item.dataAquisicao} />
         </Tabs.Panel>
         <Tabs.Panel value="hardware" pt="md">
           <AbaHardware itemId={id} />
@@ -369,21 +247,14 @@ export default function ItemPage() {
         </Tabs.Panel>
       </Tabs>
 
-      <Modal
-        opened={editando}
-        onClose={() => setEditando(false)}
-        size="xl"
-        closeOnClickOutside={false}
-        fullScreen={mobile}
-        title={`Editar ${item.numeroPatrimonio}`}
-      >
+      <Modal opened={editando} onClose={() => setEditando(false)} size="xl" closeOnClickOutside={false} fullScreen={mobile} title={`Editar ${item.numeroPatrimonio}`}>
         <ItemForm
           inicial={itemParaForm(item)}
           itemId={id}
           funcionarioNome={item.funcionarioNome}
           onSalvo={() => {
             setEditando(false);
-            qc.invalidateQueries({ queryKey: ["historico", id] });
+            qc.invalidateQueries({ queryKey: ['historico', id] });
           }}
           onCancelar={() => setEditando(false)}
         />

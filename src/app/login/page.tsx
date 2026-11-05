@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Alert, Button, Center, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -13,6 +14,7 @@ import { LogoArpa } from './LogoArpa';
 
 function LoginForm() {
   const router = useRouter();
+  const qc = useQueryClient();
   const params = useSearchParams();
   const [erro, setErro] = useState<string | null>(null);
   const { register, handleSubmit, formState } = useForm<z.infer<typeof loginSchema>>({ resolver: zodResolver(loginSchema) });
@@ -21,6 +23,7 @@ function LoginForm() {
     setErro(null);
     try {
       await api('/api/auth/login', { method: 'POST', json: d });
+      qc.clear(); // descarta dados em cache de uma sessão anterior (outro perfil)
       const next = params.get('next');
       router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
       router.refresh();
@@ -46,7 +49,7 @@ function LoginForm() {
                 {erro}
               </Alert>
             )}
-            <TextInput label="CPF ou usuário" placeholder="000.000.000-00" autoComplete="username" autoFocus {...register('username')} error={formState.errors.username?.message} />
+            <TextInput label="CPF ou usuário" placeholder="CPF só com números" autoComplete="username" autoFocus {...register('username')} error={formState.errors.username?.message} />
             <PasswordInput label="Senha" autoComplete="current-password" {...register('senha')} error={formState.errors.senha?.message} />
             <Button type="submit" loading={formState.isSubmitting} fullWidth>
               Entrar

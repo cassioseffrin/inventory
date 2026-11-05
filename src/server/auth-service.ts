@@ -4,7 +4,6 @@ import bcrypt from 'bcryptjs';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '@/db/inv';
 import { funcionarios, usuarios } from '@/db/schema';
-import { soDigitos } from '@/lib/cpf';
 import { HttpError, naoEncontrado } from './http';
 import type { Papel, Sessao } from './jwt';
 
@@ -22,20 +21,24 @@ const temEquipe = sql<boolean>`EXISTS (SELECT 1 FROM inventario.funcionarios s W
 
 const papelDe = (f: { admin: boolean; temEquipe: boolean }): Papel => (f.admin ? 'admin' : f.temEquipe ? 'gerente' : 'comum');
 
+/** CPF no login e na senha provisória: só os 11 números, sem pontos nem traço. */
+const ehCpf = (v: string) => /^\d{11}$/.test(v);
+
 /**
- * Login único: um CPF (com ou sem máscara) entra como funcionário; qualquer outro texto
+ * Login único: 11 dígitos entram como funcionário (CPF); qualquer outro texto
  * é procurado na tabela `usuarios` (contas de emergência/técnicas, sempre admin).
  */
 export async function autenticar(login: string, senha: string): Promise<Sessao> {
-  const cpf = soDigitos(login);
-  if (cpf.length === 11 && /^[\d.\-\s]+$/.test(login)) {
+  if (/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(login)) throw new HttpError(401, 'Informe o CPF só com números, sem pontos e traço');
+  if (ehCpf(login)) {
+    const cpf = login;
     const [f] = await db()
       .select({ id: funcionarios.id, nome: funcionarios.nome, matricula: funcionarios.matricula, cpf: funcionarios.cpf, senhaHash: funcionarios.senhaHash, admin: funcionarios.admin, ativo: funcionarios.ativo, temEquipe })
       .from(funcionarios)
       .where(eq(funcionarios.cpf, cpf));
     // senha provisória (hash NULL) = o próprio CPF; ainda assim roda o bcrypt para não vazar pelo tempo
     const okHash = await bcrypt.compare(senha, f?.senhaHash ?? HASH_FALSO);
-    const ok = f?.senhaHash ? okHash : !!f && iguais(soDigitos(senha), cpf) && /^[\d.\-\s]+$/.test(senha);
+    const ok = f?.senhaHash ? okHash : !!f && iguais(senha, cpf);
     if (!f || !ok || !f.ativo) throw new HttpError(401, 'Usuário ou senha inválidos');
     return { id: f.id, username: f.matricula, nome: f.nome, papel: papelDe(f), funcionarioId: f.id, senhaProvisoria: !f.senhaHash };
   }
@@ -73,7 +76,7 @@ export async function resolverAcesso(s: Sessao): Promise<{ papel: Papel; escopo:
 
 export function validarNovaSenha(nova: string, cpf?: string | null) {
   if (nova.length < 8) throw new HttpError(400, 'A nova senha precisa ter ao menos 8 caracteres');
-  if (cpf && soDigitos(nova) === cpf && /^[\d.\-\s]+$/.test(nova)) throw new HttpError(400, 'A nova senha não pode ser o CPF');
+  if (cpf && nova.replace(/\D/g, '') === cpf) throw new HttpError(400, 'A nova senha não pode ser o CPF');
 }
 
 /** Troca a própria senha (funcionário ou conta de `usuarios`), conferindo a atual. */
@@ -81,7 +84,7 @@ export async function alterarSenha(s: Sessao, atual: string, nova: string) {
   if (s.funcionarioId) {
     const [f] = await db().select({ cpf: funcionarios.cpf, senhaHash: funcionarios.senhaHash }).from(funcionarios).where(eq(funcionarios.id, s.funcionarioId));
     if (!f) throw naoEncontrado('Funcionário');
-    const ok = f.senhaHash ? await bcrypt.compare(atual, f.senhaHash) : !!f.cpf && iguais(soDigitos(atual), f.cpf);
+    const ok = f.senhaHash ? await bcrypt.compare(atual, f.senhaHash) : !!f.cpf && iguais(atual, f.cpf);
     if (!ok) throw new HttpError(400, 'Senha atual incorreta');
     validarNovaSenha(nova, f.cpf);
     await db().update(funcionarios).set({ senhaHash: await bcrypt.hash(nova, CUSTO), updatedAt: new Date() }).where(eq(funcionarios.id, s.funcionarioId));
