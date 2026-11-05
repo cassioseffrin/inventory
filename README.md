@@ -224,6 +224,8 @@ O login aceita **CPF** (funcionário) ou **usuário** (conta da tabela `usuarios
 | gerente | funcionário com ao menos um subordinado | dashboard, inventário e software **dele e de toda a equipe abaixo dele**, só leitura; menu **Funcionários** com as ações do admin, mas só sobre a equipe abaixo dele (não vê a própria ficha, não concede admin, não altera um admin e só movimenta itens entre pessoas da equipe) |
 | comum | demais funcionários | dashboard, inventário e software **só dos próprios itens**, só leitura |
 
+A hierarquia vem do campo **Gerente** de cada funcionário e não tem limite de níveis. Por exemplo, Maicon → Joice (PO) → Cassio: a Joice vê o Cassio; o Maicon vê a Joice, o Cassio e as outras POs com as equipes delas. A tela Funcionários tem o modo **Árvore** para visualizar essa estrutura. O menu **Organograma** (todos os perfis) mostra a empresa inteira em gráfico, só com nome, setor, ramal e e-mail dos ativos. CPF, celular, perfil e dados de inventário nunca saem nesse endpoint (`/api/organograma`).
+
 O perfil é recalculado a cada requisição. Inativar o funcionário, tirar o admin ou mudar a equipe vale na hora. Na API, toda rota é só de admin, a menos que declare `rota(..., { restrito: true })` (todos os perfis) ou `{ gerente: true }` (admin + gerente). O handler recebe `escopo` (ids de funcionários visíveis, incluindo a própria pessoa) e `equipe` (o escopo sem ela), e tem que aplicá-los.
 
 ## Rodando com Docker

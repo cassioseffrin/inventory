@@ -132,6 +132,27 @@ export async function listarGerentes(equipe?: number[] | null) {
     .orderBy(asc(funcionarios.nome));
 }
 
+/**
+ * Todos os funcionários visíveis numa lista plana (o cliente monta a árvore pelo gerenteId).
+ * Para gerente, as raízes são os subordinados diretos dele (o próprio fica de fora).
+ */
+export async function arvoreFuncionarios(equipe?: number[] | null) {
+  return db()
+    .select({
+      id: funcionarios.id,
+      nome: funcionarios.nome,
+      matricula: funcionarios.matricula,
+      setor: funcionarios.setor,
+      gerenteId: funcionarios.gerenteId,
+      admin: funcionarios.admin,
+      ativo: funcionarios.ativo,
+      itens: sql<number>`(SELECT count(*)::int FROM inventario.itens i WHERE i.funcionario_id = ${funcionarios}.id)`,
+    })
+    .from(funcionarios)
+    .where(naEquipe(equipe))
+    .orderBy(asc(funcionarios.nome));
+}
+
 /** Lista curta para o select com busca. */
 export async function opcoesFuncionarios(q?: string, escopo?: number[] | null) {
   const like = q ? `%${q.replace(/[\\%_]/g, (c) => '\\' + c)}%` : null;

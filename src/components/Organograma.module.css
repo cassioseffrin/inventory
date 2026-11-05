@@ -1,0 +1,130 @@
+/* Organograma de cima para baixo: cada nível é um <ul> e as linhas são desenhadas com pseudo-elementos. */
+.arvore {
+  display: flex;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+}
+
+.arvore ul {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0 0;
+  margin: 0;
+  position: relative;
+}
+
+.arvore li {
+  list-style: none;
+  position: relative;
+  padding: 20px 6px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* a raiz não tem linha acima */
+.arvore > li {
+  padding-top: 0;
+}
+
+/* traço horizontal ligando irmãos + traço vertical até o cartão */
+.arvore ul > li::before,
+.arvore ul > li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: 20px;
+  border-top: 2px solid var(--org-linha);
+}
+
+.arvore ul > li::after {
+  right: auto;
+  left: 50%;
+  border-left: 2px solid var(--org-linha);
+}
+
+.arvore ul > li:only-child::before,
+.arvore ul > li:only-child::after {
+  display: none;
+}
+
+.arvore ul > li:only-child {
+  padding-top: 0;
+}
+
+.arvore ul > li:first-child::before,
+.arvore ul > li:last-child::after {
+  border: 0 none;
+}
+
+.arvore ul > li:last-child::before {
+  border-right: 2px solid var(--org-linha);
+  border-top-right-radius: 6px;
+}
+
+.arvore ul > li:first-child::after {
+  border-top-left-radius: 6px;
+}
+
+/* traço vertical descendo do pai até a linha dos filhos */
+.arvore ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 20px;
+  border-left: 2px solid var(--org-linha);
+}
+
+.cartao {
+  width: 190px;
+  text-align: left;
+  border: 1px solid var(--mantine-color-default-border);
+  border-top: 4px solid var(--org-cor);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-body);
+  padding: 8px 10px;
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+.voce {
+  outline: 2px solid var(--mantine-color-blue-filled);
+  outline-offset: 2px;
+}
+
+.area {
+  --org-linha: var(--mantine-color-gray-4);
+  overflow: auto;
+  padding: 16px;
+  min-height: 200px;
+}
+
+:global([data-mantine-color-scheme='dark']) .area {
+  --org-linha: var(--mantine-color-dark-3);
+}
+
+/* subordinados sem equipe ficam empilhados numa coluna, para equipes grandes não esticarem o gráfico */
+.pilha {
+  display: grid;
+  grid-template-columns: repeat(var(--org-colunas, 1), auto);
+  gap: 8px 14px;
+  border-left: 2px solid var(--org-linha);
+  padding: 8px 0 4px 14px;
+  margin-left: 0;
+}
+
+.pilha > * {
+  position: relative;
+}
+
+.pilha > *::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 22px;
+  width: 12px;
+  border-top: 2px solid var(--org-linha);
+}

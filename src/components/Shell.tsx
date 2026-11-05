@@ -5,6 +5,7 @@ import { useDisclosure } from '@mantine/hooks';
 import {
   IconApps,
   IconBox,
+  IconHierarchy2,
   IconCopy,
   IconDashboard,
   IconForms,
@@ -35,6 +36,7 @@ const LINKS: { href: string; label: string; icon: typeof IconBox; contador?: str
   { href: '/estrutura', label: 'Estrutura de servidores', icon: IconServer2 },
   { href: '/inventario', label: 'Inventário', icon: IconBox, contador: 'inventario' },
   { href: '/funcionarios', label: 'Funcionários', icon: IconUsers, contador: 'funcionarios' },
+  { href: '/organograma', label: 'Organograma', icon: IconHierarchy2 },
   { href: '/grupos', label: 'Grupos', icon: IconCategory, contador: 'grupos' },
   { href: '/software', label: 'Software', icon: IconApps, contador: 'software' },
   { href: '/duplicados', label: 'Duplicados', icon: IconCopy, contador: 'duplicados', alerta: true },

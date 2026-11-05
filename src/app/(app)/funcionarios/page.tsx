@@ -1,15 +1,16 @@
 'use client';
 
 import { ActionIcon, Anchor, Badge, Button, Group, SegmentedControl, Select, Stack, Text, TextInput, Title, Tooltip } from '@mantine/core';
-import { useDebouncedValue } from '@mantine/hooks';
+import { useDebouncedValue, useLocalStorage } from '@mantine/hooks';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { IconEdit, IconLink, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { IconBinaryTree, IconEdit, IconLink, IconList, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { ArvoreFuncionarios } from '@/components/ArvoreFuncionarios';
 import { AssociarItensModal } from '@/components/AssociarItensModal';
 import { DataTable } from '@/components/DataTable';
 import { FuncionarioModal } from '@/components/FuncionarioModal';
@@ -26,6 +27,7 @@ export default function FuncionariosPage() {
   const [busca, setBusca] = useState('');
   const [q] = useDebouncedValue(busca, 300);
   const [ativo, setAtivo] = useState('true');
+  const [modo, setModo] = useLocalStorage<'lista' | 'arvore'>({ key: 'funcionarios-modo', defaultValue: 'lista' });
   const [page, setPage] = useState(1);
   const [editar, setEditar] = useState<Funcionario | 'novo' | null>(null);
   const [associar, setAssociar] = useState<Funcionario | null>(null);
@@ -150,6 +152,28 @@ export default function FuncionariosPage() {
         </Button>
       </Group>
       <Group>
+        <SegmentedControl
+          value={modo}
+          onChange={(v) => setModo(v as 'lista' | 'arvore')}
+          data={[
+            {
+              value: 'lista',
+              label: (
+                <Group gap={4} wrap="nowrap">
+                  <IconList size={14} /> Lista
+                </Group>
+              ),
+            },
+            {
+              value: 'arvore',
+              label: (
+                <Group gap={4} wrap="nowrap">
+                  <IconBinaryTree size={14} /> Árvore
+                </Group>
+              ),
+            },
+          ]}
+        />
         <TextInput
           leftSection={<IconSearch size={16} />}
           placeholder="Nome, matrícula ou e-mail"
@@ -172,37 +196,43 @@ export default function FuncionariosPage() {
             { value: 'todos', label: 'Todos' },
           ]}
         />
-        <Select
-          placeholder="Gerente: todos"
-          searchable
-          clearable
-          w={300}
-          value={gerente}
-          onChange={(v) => {
-            setGerente(v);
-            setPage(1);
-          }}
-          nothingFoundMessage="Nenhum gerente"
-          data={[
-            { value: 'todos', label: 'Somente gerentes' },
-            ...gerentes.map((g) => ({
-              value: String(g.id),
-              label: `Equipe de ${g.nome} (${g.equipe})${g.ativo ? '' : ' [inativo]'}`,
-            })),
-          ]}
-        />
+        {modo === 'lista' && (
+          <Select
+            placeholder="Gerente: todos"
+            searchable
+            clearable
+            w={300}
+            value={gerente}
+            onChange={(v) => {
+              setGerente(v);
+              setPage(1);
+            }}
+            nothingFoundMessage="Nenhum gerente"
+            data={[
+              { value: 'todos', label: 'Somente gerentes' },
+              ...gerentes.map((g) => ({
+                value: String(g.id),
+                label: `Equipe de ${g.nome} (${g.equipe})${g.ativo ? '' : ' [inativo]'}`,
+              })),
+            ]}
+          />
+        )}
       </Group>
-      <DataTable
-        data={data?.dados ?? []}
-        columns={columns}
-        getRowId={(f) => String(f.id)}
-        loading={isFetching}
-        total={data?.total ?? 0}
-        page={page}
-        pageSize={25}
-        onPage={setPage}
-        onRowClick={(f) => router.push(`/funcionarios/${f.id}`)}
-      />
+      {modo === 'arvore' ? (
+        <ArvoreFuncionarios busca={q} ativo={ativo as 'true' | 'false' | 'todos'} />
+      ) : (
+        <DataTable
+          data={data?.dados ?? []}
+          columns={columns}
+          getRowId={(f) => String(f.id)}
+          loading={isFetching}
+          total={data?.total ?? 0}
+          page={page}
+          pageSize={25}
+          onPage={setPage}
+          onRowClick={(f) => router.push(`/funcionarios/${f.id}`)}
+        />
+      )}
       <AssociarItensModal funcionario={associar} onClose={() => setAssociar(null)} />
       <FuncionarioModal inicial={editar} onClose={() => setEditar(null)} />
     </Stack>
