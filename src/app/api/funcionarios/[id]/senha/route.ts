@@ -1,7 +1,13 @@
 import { resetarSenhaFuncionario } from '@/server/auth-service';
+import { garantirNaEquipe } from '@/server/cadastros-service';
 import { idParam, rota } from '@/server/http';
 
-/** Admin: volta a senha do funcionário para a provisória (o próprio CPF). */
-export const DELETE = rota<{ id: string }>(async ({ params }) => {
-  await resetarSenhaFuncionario(idParam(params.id));
-});
+/** Volta a senha do funcionário para a provisória (o próprio CPF). Gerente: só da equipe. */
+export const DELETE = rota<{ id: string }>(
+  async ({ params, equipe }) => {
+    const id = idParam(params.id);
+    await garantirNaEquipe(id, equipe, true);
+    await resetarSenhaFuncionario(id);
+  },
+  { gerente: true },
+);

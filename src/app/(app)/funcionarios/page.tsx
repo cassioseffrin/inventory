@@ -13,12 +13,16 @@ import { useMemo, useState } from 'react';
 import { AssociarItensModal } from '@/components/AssociarItensModal';
 import { DataTable } from '@/components/DataTable';
 import { FuncionarioModal } from '@/components/FuncionarioModal';
+import { useSessao } from '@/components/useSessao';
 import { api, mensagemErro, qs, type Pagina } from '@/lib/api';
 import type { Funcionario } from '@/lib/types';
 
 export default function FuncionariosPage() {
   const router = useRouter();
   const qc = useQueryClient();
+  // gerente: a própria ficha não é acessível (ele só gerencia a equipe abaixo dele)
+  const { data: sessao } = useSessao();
+  const proprioId = sessao?.papel === 'admin' ? undefined : sessao?.funcionarioId;
   const [busca, setBusca] = useState('');
   const [q] = useDebouncedValue(busca, 300);
   const [ativo, setAtivo] = useState('true');
@@ -64,9 +68,13 @@ export default function FuncionariosPage() {
         header: 'Gerente',
         cell: ({ row }) =>
           row.original.gerenteId ? (
-            <Anchor component={Link} href={`/funcionarios/${row.original.gerenteId}`} size="sm" onClick={(e) => e.stopPropagation()}>
-              {row.original.gerenteNome}
-            </Anchor>
+            row.original.gerenteId === proprioId ? (
+              <Text size="sm">{row.original.gerenteNome} (você)</Text>
+            ) : (
+              <Anchor component={Link} href={`/funcionarios/${row.original.gerenteId}`} size="sm" onClick={(e) => e.stopPropagation()}>
+                {row.original.gerenteNome}
+              </Anchor>
+            )
           ) : (
             '—'
           ),
@@ -130,7 +138,7 @@ export default function FuncionariosPage() {
         ),
       },
     ],
-    [qc],
+    [qc, proprioId],
   );
 
   return (

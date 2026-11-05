@@ -19,6 +19,14 @@ const filtro = z.object({
     .transform((v) => (v === undefined ? undefined : v === 'true')),
 });
 
-export const GET = rota(async ({ req }) => listarFuncionarios(query(req, filtro)));
+/** Admin vê todos; gerente só a equipe abaixo dele. */
+export const GET = rota(async ({ req, equipe }) => listarFuncionarios(query(req, filtro), equipe), { gerente: true });
 
-export const POST = rota(async ({ req }) => Response.json(await criarFuncionario(await corpo(req, funcionarioSchema)), { status: 201 }));
+export const POST = rota(
+  async ({ req, sessao, equipe }) =>
+    Response.json(
+      await criarFuncionario(await corpo(req, funcionarioSchema), equipe && sessao.funcionarioId ? { equipe, proprioId: sessao.funcionarioId } : null),
+      { status: 201 },
+    ),
+  { gerente: true },
+);

@@ -8,6 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { useSessao } from '@/components/useSessao';
 import { api, mensagemErro } from '@/lib/api';
 import { mascaraCpf } from '@/lib/cpf';
 import { mascaraTelefone } from '@/lib/telefone';
@@ -25,6 +26,8 @@ type Ficha = Omit<Funcionario, 'itens'> & {
 export default function FuncionarioPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
+  const { data: sessao } = useSessao();
+  const proprioId = sessao?.papel === 'admin' ? undefined : sessao?.funcionarioId;
   const [editar, setEditar] = useState(false);
   const [associar, setAssociar] = useState(false);
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
@@ -128,9 +131,13 @@ export default function FuncionarioPage() {
               Gerente
             </Text>
             {f.gerenteId ? (
-              <Anchor component={Link} href={`/funcionarios/${f.gerenteId}`} size="sm">
-                {f.gerenteNome}
-              </Anchor>
+              f.gerenteId === proprioId ? (
+                <Text size="sm">{f.gerenteNome} (você)</Text>
+              ) : (
+                <Anchor component={Link} href={`/funcionarios/${f.gerenteId}`} size="sm">
+                  {f.gerenteNome}
+                </Anchor>
+              )
             ) : (
               <Text size="sm">—</Text>
             )}

@@ -48,6 +48,39 @@ async function validarGerente(id: number | null, gerenteId: number | null | unde
 /** Tem ao menos um subordinado. `${funcionarios}.id` qualificado pelo mesmo motivo do gerenteNome. */
 const ehGerente = sql`EXISTS (SELECT 1 FROM inventario.funcionarios s WHERE s.gerente_id = ${funcionarios}.id)`;
 
+/** Restringe a consulta aos funcionários da equipe (perfil gerente); null = sem restrição. */
+const naEquipe = (equipe: number[] | null | undefined) =>
+  !equipe ? undefined : equipe.length ? inArray(funcionarios.id, equipe) : sql`false`;
+
+/**
+ * Perfil gerente: o alvo precisa estar na equipe (árvore abaixo dele). Em escrita, também não pode
+ * ser um administrador. Responde 404 fora da equipe para não revelar quem existe.
+ */
+export async function garantirNaEquipe(id: number, equipe: number[] | null, escrita = false) {
+  if (!equipe) return;
+  if (!equipe.includes(id)) throw naoEncontrado('Funcionário');
+  if (!escrita) return;
+  const [f] = await db().select({ admin: funcionarios.admin }).from(funcionarios).where(eq(funcionarios.id, id));
+  if (f?.admin) throw new HttpError(403, 'Somente administradores alteram um administrador');
+}
+
+/** Contexto de quem está alterando: null = admin (sem restrição). */
+export type Gerencia = { equipe: number[]; proprioId: number } | null;
+
+/**
+ * Gerente não concede admin e só pode pendurar o funcionário em si mesmo ou em alguém da
+ * equipe (senão o funcionário sairia do alcance dele, ou entraria na equipe de outro).
+ */
+function validarGerencia(g: Gerencia, d: Partial<FuncionarioInput>, criando: boolean) {
+  if (!g) return;
+  if (d.admin) throw new HttpError(403, 'Somente administradores concedem o perfil admin');
+  if (criando || d.gerenteId !== undefined) {
+    if (!d.gerenteId || !(d.gerenteId === g.proprioId || g.equipe.includes(d.gerenteId))) {
+      throw new HttpError(400, 'O gerente precisa ser você ou alguém da sua equipe');
+    }
+  }
+}
+
 export async function listarFuncionarios(f: {
   q?: string;
   ativo?: boolean;
@@ -56,9 +89,10 @@ export async function listarFuncionarios(f: {
   soGerentes?: boolean;
   page: number;
   pageSize: number;
-}): Promise<Pagina<Omit<typeof funcionarios.$inferSelect, 'senhaHash'> & { itens: number; senhaDefinida: boolean }>> {
+}, equipe?: number[] | null): Promise<Pagina<Omit<typeof funcionarios.$inferSelect, 'senhaHash'> & { itens: number; senhaDefinida: boolean }>> {
   const like = f.q ? `%${f.q.replace(/[\\%_]/g, (c) => '\\' + c)}%` : null;
   const where = and(
+    naEquipe(equipe),
     f.gerenteId ? eq(funcionarios.gerenteId, f.gerenteId) : undefined,
     f.soGerentes ? ehGerente : undefined,
     like ? sql`(${funcionarios.nome} ILIKE ${like} OR ${funcionarios.matricula} ILIKE ${like} OR ${funcionarios.email} ILIKE ${like})` : undefined,
@@ -84,7 +118,7 @@ export async function listarFuncionarios(f: {
 }
 
 /** Funcionários que têm equipe (ao menos um subordinado), com o tamanho da equipe. */
-export async function listarGerentes() {
+export async function listarGerentes(equipe?: number[] | null) {
   return db()
     .select({
       id: funcionarios.id,
@@ -94,7 +128,7 @@ export async function listarGerentes() {
       equipe: sql<number>`(SELECT count(*)::int FROM inventario.funcionarios s WHERE s.gerente_id = ${funcionarios}.id)`,
     })
     .from(funcionarios)
-    .where(ehGerente)
+    .where(and(ehGerente, naEquipe(equipe)))
     .orderBy(asc(funcionarios.nome));
 }
 
@@ -150,7 +184,8 @@ export async function obterFuncionario(id: number) {
  * Associa (`adicionar`) ou desassocia (`remover`) itens do funcionário em lote.
  * Itens de outro responsável são transferidos; tudo vira `troca_responsavel` no histórico.
  */
-export async function associarItensFuncionario(id: number, d: { adicionar: number[]; remover: number[] }, usuario: string) {
+/** `escopo` (perfil gerente): só movimenta itens que já são de alguém do escopo (ele ou a equipe). */
+export async function associarItensFuncionario(id: number, d: { adicionar: number[]; remover: number[] }, usuario: string, escopo?: number[] | null) {
   return db().transaction(async (tx) => {
     const [f] = await tx.select({ id: funcionarios.id }).from(funcionarios).where(eq(funcionarios.id, id));
     if (!f) throw naoEncontrado('Funcionário');
@@ -161,6 +196,9 @@ export async function associarItensFuncionario(id: number, d: { adicionar: numbe
       .from(itens)
       .where(inArray(itens.id, ids))
       .for('update');
+    if (escopo && atuais.some((it) => it.funcionarioId === null || !escopo.includes(it.funcionarioId))) {
+      throw new HttpError(403, 'Só é possível movimentar itens da sua equipe');
+    }
     const adicionar = new Set(d.adicionar);
     let alterados = 0;
     for (const it of atuais) {
@@ -175,13 +213,15 @@ export async function associarItensFuncionario(id: number, d: { adicionar: numbe
   });
 }
 
-export async function criarFuncionario(d: FuncionarioInput) {
+export async function criarFuncionario(d: FuncionarioInput, g: Gerencia = null) {
+  validarGerencia(g, d, true);
   await validarGerente(null, d.gerenteId);
   const [f] = await db().insert(funcionarios).values(d).returning(colunasFuncionario);
   return f;
 }
 
-export async function atualizarFuncionario(id: number, d: Partial<FuncionarioInput>) {
+export async function atualizarFuncionario(id: number, d: Partial<FuncionarioInput>, g: Gerencia = null) {
+  validarGerencia(g, d, false);
   await validarGerente(id, d.gerenteId);
   const [f] = await db().update(funcionarios).set({ ...d, updatedAt: new Date() }).where(eq(funcionarios.id, id)).returning(colunasFuncionario);
   if (!f) throw naoEncontrado('Funcionário');

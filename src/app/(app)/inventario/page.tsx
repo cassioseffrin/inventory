@@ -49,8 +49,11 @@ function Inventario() {
   const sp = useSearchParams();
   const qc = useQueryClient();
   // gerente/comum: só leitura, e a API já limita aos itens dele (e da equipe, se gerente)
-  const papel = useSessao().data?.papel;
+  const { data: sessao } = useSessao();
+  const papel = sessao?.papel;
   const admin = papel === 'admin';
+  // ficha do responsável: admin abre qualquer uma; gerente, as da equipe (não a própria)
+  const abreFicha = (fid: number) => admin || (papel === 'gerente' && fid !== sessao?.funcionarioId);
 
   // filtros iniciais podem vir da URL (links do dashboard / ficha do funcionário)
   const [busca, setBusca] = useState(sp.get('q') ?? '');
@@ -183,7 +186,7 @@ function Inventario() {
         header: 'Responsável',
         cell: ({ row }) =>
           row.original.funcionarioId ? (
-            admin ? (
+            abreFicha(row.original.funcionarioId) ? (
               <Anchor component={Link} href={`/funcionarios/${row.original.funcionarioId}`} size="sm" onClick={(e) => e.stopPropagation()}>
                 {row.original.funcionarioNome}
               </Anchor>
@@ -243,7 +246,7 @@ function Inventario() {
           ] as ColumnDef<Item>[])),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [admin],
+    [admin, papel, sessao?.funcionarioId],
   );
 
   const nSel = Object.keys(selecao).length;

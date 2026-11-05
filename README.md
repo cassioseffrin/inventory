@@ -221,10 +221,10 @@ O login aceita **CPF** (funcionário) ou **usuário** (conta da tabela `usuarios
 | Perfil | Quem | Acesso |
 | --- | --- | --- |
 | admin | funcionário com "Administrador" marcado, ou conta de `usuarios` | tudo |
-| gerente | funcionário com ao menos um subordinado | dashboard, inventário e software **dele e de toda a equipe abaixo dele**, só leitura |
+| gerente | funcionário com ao menos um subordinado | dashboard, inventário e software **dele e de toda a equipe abaixo dele**, só leitura; menu **Funcionários** com as ações do admin, mas só sobre a equipe abaixo dele (não vê a própria ficha, não concede admin, não altera um admin e só movimenta itens entre pessoas da equipe) |
 | comum | demais funcionários | dashboard, inventário e software **só dos próprios itens**, só leitura |
 
-O perfil é recalculado a cada requisição. Inativar o funcionário, tirar o admin ou mudar a equipe vale na hora. Na API, toda rota é só de admin, a menos que declare `rota(..., { restrito: true })`. Nesse caso o handler recebe `escopo` (ids de funcionários visíveis) e tem que aplicá-lo.
+O perfil é recalculado a cada requisição. Inativar o funcionário, tirar o admin ou mudar a equipe vale na hora. Na API, toda rota é só de admin, a menos que declare `rota(..., { restrito: true })` (todos os perfis) ou `{ gerente: true }` (admin + gerente). O handler recebe `escopo` (ids de funcionários visíveis, incluindo a própria pessoa) e `equipe` (o escopo sem ela), e tem que aplicá-los.
 
 ## Rodando com Docker
 

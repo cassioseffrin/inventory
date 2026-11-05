@@ -23,12 +23,19 @@ export const naoEncontrado = (o = 'Registro') => new HttpError(404, `${o} não e
  * `escopo`: ids de funcionários cujos itens a sessão pode ver (gerente = ele + equipe, comum = ele);
  * null = sem restrição (admin).
  */
-type Ctx<P> = { req: NextRequest; params: P; sessao: Sessao; escopo: number[] | null };
+type Ctx<P> = {
+  req: NextRequest;
+  params: P;
+  sessao: Sessao;
+  escopo: number[] | null;
+  /** escopo sem a própria pessoa: os funcionários que um gerente pode gerenciar; null = todos (admin) */
+  equipe: number[] | null;
+};
 /**
- * Por padrão a rota é só de admin. `restrito: true` libera também gerente/comum — o handler
- * fica responsável por aplicar `escopo` (só usar em leituras).
+ * Por padrão a rota é só de admin. `restrito: true` libera também gerente/comum (só leituras,
+ * aplicando `escopo`); `gerente: true` libera admin + gerente (o handler aplica `equipe`).
  */
-type Opts = { restrito?: boolean; aceitaToken?: boolean };
+type Opts = { restrito?: boolean; gerente?: boolean; aceitaToken?: boolean };
 
 function sessaoPorToken(req: NextRequest): Sessao | null {
   const esperado = env().IMPORT_API_TOKEN;
@@ -54,9 +61,11 @@ export function rota<P = Record<string, string>>(
         (await verificarToken((await cookies()).get(COOKIE_NAME)?.value)) ?? (opts.aceitaToken ? sessaoPorToken(req) : null);
       if (!sessao) throw new HttpError(401, 'Não autenticado');
       const { papel, escopo } = await resolverAcesso(sessao);
-      if (papel !== 'admin' && !opts.restrito) throw new HttpError(403, 'Sem permissão para esta operação');
+      const liberado = papel === 'admin' || opts.restrito || (opts.gerente && papel === 'gerente');
+      if (!liberado) throw new HttpError(403, 'Sem permissão para esta operação');
       const params = (segment?.params ? await segment.params : {}) as P;
-      const out = await fn({ req, params, sessao: { ...sessao, papel }, escopo });
+      const equipe = escopo ? escopo.filter((id) => id !== sessao.funcionarioId) : null;
+      const out = await fn({ req, params, sessao: { ...sessao, papel }, escopo, equipe });
       if (out instanceof Response) return out;
       if (out === undefined) return new NextResponse(null, { status: 204 });
       return NextResponse.json(out);

@@ -15,7 +15,7 @@ import { AbaFotos } from '@/components/item/Fotos';
 import { AbaHardware, AbaHistorico, AbaRede, AbaServicos, AbaSoftware } from '@/components/item/Secoes';
 import { SyncModal } from '@/components/item/SyncModal';
 import { api, mensagemErro } from '@/lib/api';
-import { useEhAdmin } from '@/components/useSessao';
+import { useSessao } from '@/components/useSessao';
 import { STATUS_COLOR, STATUS_LABEL, TIPO_LABEL } from '@/lib/constants';
 import { diasDesde, fmtData, fmtDataHora, fmtRelativo } from '@/lib/format';
 import type { CampoCustom, ItemDetalhe, ItemFoto } from '@/lib/types';
@@ -42,7 +42,9 @@ export default function ItemPage() {
   const [sync, setSync] = useState(false);
   const [aba, setAba] = useState<string | null>('geral');
   const mobile = useMediaQuery('(max-width: 48em)');
-  const admin = useEhAdmin();
+  const { data: sessao } = useSessao();
+  const admin = sessao?.papel === 'admin';
+  const abreFicha = (fid: number) => admin || (sessao?.papel === 'gerente' && fid !== sessao.funcionarioId);
   const { data: item, isLoading, error } = useQuery({ queryKey: ['item', id], queryFn: () => api<ItemDetalhe>(`/api/itens/${id}`) });
   const { data: campos = [] } = useQuery({ queryKey: ['campos', 'todos'], queryFn: () => api<CampoCustom[]>('/api/campos') });
   const { data: fotos } = useQuery({ queryKey: ['fotos', id], queryFn: () => api<ItemFoto[]>(`/api/itens/${id}/fotos`) });
@@ -158,7 +160,7 @@ export default function ItemPage() {
               <SimpleGrid cols={{ base: 2, md: 4 }}>
                 <Campo label="Responsável">
                   {item.funcionarioId ? (
-                    admin ? (
+                    abreFicha(item.funcionarioId) ? (
                       <Anchor component={Link} href={`/funcionarios/${item.funcionarioId}`}>
                         {item.funcionarioNome} ({item.funcionarioMatricula})
                       </Anchor>

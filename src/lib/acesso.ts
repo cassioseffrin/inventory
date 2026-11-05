@@ -8,5 +8,7 @@ const PAGINAS_RESTRITAS = ['/', '/senha', '/software', '/inventario'];
 
 export function paginaPermitida(papel: Papel, pathname: string) {
   if (papel === 'admin') return true;
-  return PAGINAS_RESTRITAS.includes(pathname) || pathname.startsWith('/inventario/');
+  if (PAGINAS_RESTRITAS.includes(pathname) || pathname.startsWith('/inventario/')) return true;
+  // gerente administra a própria equipe (a API limita aos funcionários abaixo dele)
+  return papel === 'gerente' && (pathname === '/funcionarios' || pathname.startsWith('/funcionarios/'));
 }

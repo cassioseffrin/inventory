@@ -11,6 +11,7 @@ import { cpfValido, mascaraCpf } from '@/lib/cpf';
 import { mascaraTelefone, telefoneValido } from '@/lib/telefone';
 import type { Funcionario } from '@/lib/types';
 import { FuncionarioSelect } from './FuncionarioSelect';
+import { useSessao } from './useSessao';
 
 const formSchema = z.object({
   nome: z.string().trim().min(2, 'Informe o nome').max(150),
@@ -29,6 +30,10 @@ type FormValues = z.infer<typeof formSchema>;
 export function FuncionarioModal({ inicial, onClose }: { inicial: Funcionario | 'novo' | null; onClose: () => void }) {
   const qc = useQueryClient();
   const editando = inicial && inicial !== 'novo' ? inicial : null;
+  const { data: sessao } = useSessao();
+  const admin = sessao?.papel === 'admin';
+  // gerente cadastra sempre dentro da própria equipe: por padrão o novo funcionário fica abaixo dele
+  const gerentePadrao = !editando && !admin && sessao?.funcionarioId ? { id: sessao.funcionarioId, nome: sessao.nome } : null;
   const { register, control, handleSubmit, formState } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     values: {
@@ -39,7 +44,7 @@ export function FuncionarioModal({ inicial, onClose }: { inicial: Funcionario | 
       cpf: mascaraCpf(editando?.cpf),
       ramal: editando?.ramal ?? '',
       celular: mascaraTelefone(editando?.celular),
-      gerenteId: editando?.gerenteId ?? null,
+      gerenteId: editando ? editando.gerenteId : (gerentePadrao?.id ?? null),
       admin: editando?.admin ?? false,
       ativo: editando?.ativo ?? true,
     },
@@ -88,8 +93,11 @@ export function FuncionarioModal({ inicial, onClose }: { inicial: Funcionario | 
                 label="Gerente"
                 value={field.value}
                 onChange={(id) => field.onChange(id)}
-                nomeAtual={editando?.gerenteNome}
+                nomeAtual={editando ? editando.gerenteNome : gerentePadrao?.nome}
                 excluirId={editando?.id}
+                // gerente não pode deixar sem gerente: o funcionário sairia da equipe dele
+                clearable={admin}
+                description={admin ? undefined : 'Você ou alguém da sua equipe'}
                 comboboxProps={{ withinPortal: true }}
               />
             )}
@@ -114,18 +122,20 @@ export function FuncionarioModal({ inicial, onClose }: { inicial: Funcionario | 
             />
           </Group>
           <Controller control={control} name="ativo" render={({ field }) => <Switch label="Ativo" checked={field.value} onChange={(e) => field.onChange(e.currentTarget.checked)} />} />
-          <Controller
-            control={control}
-            name="admin"
-            render={({ field }) => (
-              <Switch
-                label="Administrador"
-                description="Acesso total. Sem isso: gerente se tiver equipe, senão usuário comum (só os próprios itens)."
-                checked={field.value}
-                onChange={(e) => field.onChange(e.currentTarget.checked)}
-              />
-            )}
-          />
+          {admin && (
+            <Controller
+              control={control}
+              name="admin"
+              render={({ field }) => (
+                <Switch
+                  label="Administrador"
+                  description="Acesso total. Sem isso: gerente se tiver equipe, senão usuário comum (só os próprios itens)."
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.currentTarget.checked)}
+                />
+              )}
+            />
+          )}
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>
               Cancelar
